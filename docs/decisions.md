@@ -7,30 +7,9 @@ below, not necessarily the last one; add a **Later reversed:** line to whichever
 
 ## Decision 1
 
-- **Chose:**
-- **Rejected:**
-- **Why:**
+- **Chose:** Better Auth with the Prisma adapter.
+- **Rejected:** Rolling custom JWT authentication or using NextAuth / Auth.js.
+- **Why:** Better Auth gives us strong TypeScript inference, automatic password hashing, clean session management, and painless Prisma integration without having to write custom token refresh logic.
 
-## Decision 2
 
-- **Chose:**
-- **Rejected:**
-- **Why:**
 
-## Decision 3
-
-- **Chose:**
-- **Rejected:**
-- **Why:**
-
-## Decision 4
-
-- **Chose:**
-- **Rejected:**
-- **Why:**
-
-## Decision 5
-
-- **Chose:**
-- **Rejected:**
-- **Why:**
