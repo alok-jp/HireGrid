@@ -12,18 +12,25 @@ datasource db {
   provider = "postgresql"
 }
 
+enum Role {
+  MASTER_ADMIN
+  RECRUITER
+  INTERVIEWER
+}
+
 model User {
-  id            String    @id @default(cuid())
+  id            String       @id @default(cuid())
   name          String
-  email         String    @unique
-  emailVerified Boolean   @default(false)
+  email         String       @unique
+  emailVerified Boolean      @default(false)
   image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  role          String?   @default("user")
+  role          Role         @default(INTERVIEWER)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 
   sessions      Session[]
   accounts      Account[]
+  invitations   Invitation[] @relation("UserInvitations")
 
   @@map("user")
 }
@@ -38,6 +45,7 @@ model Session {
   userAgent String?
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+ 
 
   @@map("session")
 }
@@ -71,4 +79,21 @@ model Verification {
   updatedAt  DateTime? @updatedAt
 
   @@map("verification")
+}
+
+model Invitation {
+  id          String   @id @default(cuid())
+  email       String
+  role        Role
+  tokenHash   String   @unique
+  expiresAt   DateTime
+  usedAt      DateTime?
+  createdAt   DateTime @default(now())
+
+  invitedById String
+  invitedBy   User     @relation("UserInvitations",fields: [invitedById],references: [id],onDelete: Cascade)
+
+  @@index([email])
+  @@index([expiresAt])
+  @@map("invitation")
 }
