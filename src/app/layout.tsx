@@ -1,7 +1,6 @@
-
 import "./globals.css";
-import { TRPCProvider } from "@/trpc/providers";
 import { Toaster } from "sonner";
+import { TRPCProvider } from "@/trpc/providers";
 
 export default function RootLayout({
   children,

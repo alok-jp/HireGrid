@@ -1,5 +1,5 @@
-import { betterAuth } from "better-auth";
 import { prismaAdapter } from "@better-auth/prisma-adapter";
+import { APIError, betterAuth } from "better-auth";
 import { prisma } from "./prisma";
 
 export const auth = betterAuth({
@@ -11,6 +11,19 @@ export const auth = betterAuth({
     user: {
       create: {
         before: async (user) => {
+          // Allow seeding master admin if ADMIN_EMAIL matches
+          if (
+            process.env.ADMIN_EMAIL &&
+            user.email === process.env.ADMIN_EMAIL
+          ) {
+            return {
+              data: {
+                ...user,
+                role: "MASTER_ADMIN",
+              },
+            };
+          }
+
           const invitation = await prisma.invitation.findFirst({
             where: {
               email: user.email,
@@ -24,24 +37,22 @@ export const auth = betterAuth({
             },
           });
 
-          if (invitation) {
-            await prisma.invitation.update({
-              where: { id: invitation.id },
-              data: { usedAt: new Date() },
+          if (!invitation) {
+            throw new APIError("BAD_REQUEST", {
+              message:
+                "Registration is invite-only. You must be invited by an administrator to create an account.",
             });
-
-            return {
-              data: {
-                ...user,
-                role: invitation.role,
-              },
-            };
           }
+
+          await prisma.invitation.update({
+            where: { id: invitation.id },
+            data: { usedAt: new Date() },
+          });
 
           return {
             data: {
               ...user,
-              role: user.role || "INTERVIEWER",
+              role: invitation.role,
             },
           };
         },

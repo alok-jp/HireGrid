@@ -1,7 +1,5 @@
-import Link from "next/link";
 import { AlertCircle, CheckCircle2, Clock } from "lucide-react";
-import { createCaller } from "@/trpc/routers/_app";
-import { createTRPCContext } from "@/trpc/context";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -10,6 +8,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { createTRPCContext } from "@/trpc/context";
+import { createCaller } from "@/trpc/routers/_app";
 
 export default async function InvitePage({
   params,

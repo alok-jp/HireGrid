@@ -1,9 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-
-import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
+import { authClient } from "@/lib/auth-client";
 
 export function LogoutButton() {
   const router = useRouter();
@@ -21,11 +20,7 @@ export function LogoutButton() {
   };
 
   return (
-    <Button
-      type="button"
-      variant="outline"
-      onClick={handleLogout}
-    >
+    <Button type="button" variant="outline" onClick={handleLogout}>
       Logout
     </Button>
   );

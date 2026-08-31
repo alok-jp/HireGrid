@@ -3,7 +3,13 @@ import RegisterForm from "@/features/auth/register-form";
 
 export default function Page() {
   return (
-    <Suspense fallback={<div className="flex min-h-screen items-center justify-center">Loading...</div>}>
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center">
+          Loading...
+        </div>
+      }
+    >
       <RegisterForm />
     </Suspense>
   );

@@ -8,4 +8,3 @@ export const appRouter = router({
 export const createCaller = createCallerFactory(appRouter);
 
 export type AppRouter = typeof appRouter;
-

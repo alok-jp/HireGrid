@@ -6,14 +6,8 @@ import { useState } from "react";
 
 import { trpc } from "./client";
 
-export function TRPCProvider({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const [queryClient] = useState(
-    () => new QueryClient(),
-  );
+export function TRPCProvider({ children }: { children: React.ReactNode }) {
+  const [queryClient] = useState(() => new QueryClient());
 
   const [trpcClient] = useState(() =>
     trpc.createClient({
@@ -27,9 +21,7 @@ export function TRPCProvider({
 
   return (
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
-      <QueryClientProvider client={queryClient}>
-        {children}
-      </QueryClientProvider>
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     </trpc.Provider>
   );
 }

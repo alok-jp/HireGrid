@@ -1,9 +1,9 @@
 import { TRPCError } from "@trpc/server";
-import { adminProcedure, publicProcedure } from "../init";
-import { z } from "zod";
 import crypto from "crypto";
-import { prisma } from "@/lib/prisma";
+import { z } from "zod";
 import { sendInvitationEmail } from "@/lib/email";
+import { prisma } from "@/lib/prisma";
+import { adminProcedure, publicProcedure } from "../init";
 
 const createInvitationSchema = z.object({
   email: z.email("Please enter a valid email address"),
@@ -33,10 +33,7 @@ export const invitationRouter = {
 
       const token = crypto.randomBytes(32).toString("hex");
 
-      const tokenHash = crypto
-        .createHash("sha256")
-        .update(token)
-        .digest("hex");
+      const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
 
       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
       const invitationUrl = `${process.env.NEXT_PUBLIC_APP_URL}/invite/${token}`;
