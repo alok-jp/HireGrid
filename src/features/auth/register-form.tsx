@@ -5,13 +5,12 @@ import { z } from "zod";
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useState } from "react";
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import Link from "next/link";
-
 
 import {
   Form,
@@ -22,7 +21,6 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 
-
 import {
   Card,
   CardContent,
@@ -30,17 +28,9 @@ import {
   CardHeader,
   CardTitle,
   CardFooter
-} from "@/components/ui/card"
+} from "@/components/ui/card";
 
-import {
-  Field,
-  FieldDescription,
-  FieldGroup,
-  FieldLabel,
-} from "@/components/ui/field"
-
-import { Input } from "@/components/ui/input"
-
+import { Input } from "@/components/ui/input";
 
 const registerSchema = z.object({
     name: z.string().min(1, "Please enter your name"),
@@ -53,23 +43,23 @@ const registerSchema = z.object({
     path: ["confirmPassword"],
 });
 
-type RegisterFormValues = z.infer<typeof registerSchema>
+type RegisterFormValues = z.infer<typeof registerSchema>;
 
-export default function RegisterForm (){
-
+export default function RegisterForm() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const emailParam = searchParams.get("email") ?? "";
 
     const form = useForm<RegisterFormValues>({
-
-        resolver:zodResolver(registerSchema),
-        defaultValues:{
-            name:"",
-            email: "",
+        resolver: zodResolver(registerSchema),
+        defaultValues: {
+            name: "",
+            email: emailParam,
             password: "",
             confirmPassword: "",
         }
-
     });
+
 
     const onSubmit = async (values: RegisterFormValues) => {
     await authClient.signUp.email(
@@ -80,8 +70,18 @@ export default function RegisterForm (){
         callbackURL: "/",
       },
       {
-        onSuccess: () => {
-          router.push("/");
+        onSuccess: (ctx) => {
+          const role = ctx.data?.user?.role;
+          if (role === "MASTER_ADMIN") {
+            router.push("/admin");
+          } else if (role === "RECRUITER") {
+            router.push("/recruiter");
+          } else if (role === "INTERVIEWER") {
+            router.push("/interviewer");
+          } else {
+            router.push("/");
+          }
+          router.refresh();
         },
         onError: (ctx) => {
           toast.error(ctx.error.message);

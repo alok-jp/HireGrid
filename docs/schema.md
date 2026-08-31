@@ -10,71 +10,71 @@ Answer each of these, in your own words.
 
 ---
 
-## Table by table: what columns and types does each one have?
+## Table by table: columns and types
 
-### `user` Table
+### `user`
 - `id`: String (cuid, primary key)
 - `name`: String
 - `email`: String (unique)
-- `emailVerified`: Boolean (defaults to false)
-- `image`: Optional String
-- `createdAt`: DateTime (defaults to current time)
-- `updatedAt`: DateTime (updated automatically)
-- `role`: Optional String (defaults to `"user"`)
+- `emailVerified`: Boolean (default: false)
+- `image`: String (optional)
+- `role`: Role Enum (`MASTER_ADMIN`, `RECRUITER`, `INTERVIEWER`, default: `INTERVIEWER`)
+- `createdAt`, `updatedAt`: DateTime
 
-### `session` Table
+### `session`
 - `id`: String (cuid, primary key)
 - `expiresAt`: DateTime
 - `token`: String (unique)
-- `createdAt`: DateTime
-- `updatedAt`: DateTime
-- `ipAddress`: Optional String
-- `userAgent`: Optional String
-- `userId`: String (foreign key to `user.id`, cascades on delete)
+- `ipAddress`, `userAgent`: String (optional)
+- `userId`: String (foreign key -> `user.id`, cascade delete)
+- `createdAt`, `updatedAt`: DateTime
 
-### `account` Table
+### `account`
 - `id`: String (cuid, primary key)
-- `accountId`: String
-- `providerId`: String
-- `userId`: String (foreign key to `user.id`, cascades on delete)
-- `accessToken`, `refreshToken`, `idToken`: Optional Strings
-- `accessTokenExpiresAt`, `refreshTokenExpiresAt`: Optional DateTimes
-- `password`: Optional String (hashed password)
-- `createdAt`, `updatedAt`: DateTimes
+- `accountId`, `providerId`: String
+- `userId`: String (foreign key -> `user.id`, cascade delete)
+- `accessToken`, `refreshToken`, `idToken`, `password`: String (optional)
+- `createdAt`, `updatedAt`: DateTime
 
-### `verification` Table
+### `verification`
 - `id`: String (cuid, primary key)
-- `identifier`: String
-- `value`: String
+- `identifier`, `value`: String
 - `expiresAt`: DateTime
-- `createdAt`, `updatedAt`: Optional DateTimes
+- `createdAt`, `updatedAt`: DateTime (optional)
+
+### `invitation`
+- `id`: String (cuid, primary key)
+- `email`: String
+- `role`: Role Enum
+- `tokenHash`: String (unique)
+- `expiresAt`: DateTime
+- `usedAt`: DateTime (optional)
+- `invitedById`: String (foreign key -> `user.id`, cascade delete)
+- `createdAt`: DateTime
 
 ---
 
-## Which relationships are one-to-many, and which are many-to-many?
+## Relationships
 
-- **One-to-Many**:
-  - `User` -> `Session`: One user can have multiple active session records across different devices.
-  - `User` -> `Account`: One user can link multiple login accounts or OAuth providers.
-- **Many-to-Many**:
-  - None required for the authentication schema right now.
+- **One-to-Many**: `User` -> `Session[]`, `User` -> `Account[]`, `User` -> `Invitation[]`.
+- **Many-to-Many**: None in the current schema.
 
 ---
 
-## Which constraints are enforced by the database, and which by application code — and why did you draw the line there?
+## Constraints: Database vs. Application Code
 
-- **Database Constraints**: Email uniqueness on `user`, token uniqueness on `session`, and cascading deletions on user ID foreign keys.
-- **Application Code Constraints**: Form field formatting rules (valid email syntax, minimum password length), matching password confirmation, and assigning default `"user"` roles on signup.
-- **Why draw the line there?**: Critical data integrity rules (like unique emails and foreign key cleanup) belong in the database so invalid data can never be written. Input formatting and UX feedback belong in application code to give instant feedback before hitting the database.
-
----
-
-## What did you deliberately denormalise?
-
-I kept `role` as a simple string column directly on the `user` table instead of creating separate `roles` and `user_roles` tables. Since our permissions are straightforward (`user` vs `admin`), storing the role directly avoids unnecessary database joins on every request.
+- **Database**: Unique constraints (`user.email`, `session.token`, `invitation.tokenHash`) and foreign key cascade deletes.
+- **Application Code**: Zod form validation, password strength checks, and role assignment logic.
+- **Why**: Database constraints protect storage integrity, while application code provides instant user feedback.
 
 ---
 
-## What would break first if this had 100x the data?
+## Deliberate Denormalisation
 
-The `session` table would grow very large and slow down lookups if expired sessions accumulate over time without automated cleanup. Adding an index on `expiresAt` and running a background cleanup job would be essential at scale.
+- Stored `role` directly on the `user` table as an enum instead of join tables, avoiding extra joins on every request.
+
+---
+
+## What would break first at 100x the data?
+
+- The `session` table would slow down if expired sessions aren't periodically cleaned up. Adding automated TTL cleanup keeps session lookups fast.

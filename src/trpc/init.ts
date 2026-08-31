@@ -37,3 +37,6 @@ export const adminProcedure = protectedProcedure.use(
     return next();
   },
 );
+
+export const createCallerFactory = t.createCallerFactory;
+

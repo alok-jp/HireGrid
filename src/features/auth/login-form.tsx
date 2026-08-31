@@ -54,9 +54,18 @@ export function LoginForm (){
             password: values.password,
         },
     {
-        onSuccess:() => {
-            router.push("/")
-            router.refresh();
+        onSuccess: (ctx) => {
+          const role = ctx.data?.user?.role;
+          if (role === "MASTER_ADMIN") {
+            router.push("/admin");
+          } else if (role === "RECRUITER") {
+            router.push("/recruiter");
+          } else if (role === "INTERVIEWER") {
+            router.push("/interviewer");
+          } else {
+            router.push("/");
+          }
+          router.refresh();
         },
         onError:(ctx)=>{
             toast.error(ctx.error.message);

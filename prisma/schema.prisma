@@ -32,6 +32,7 @@ model User {
   accounts      Account[]
   invitations   Invitation[] @relation("UserInvitations")
 
+  @@index([email])
   @@map("user")
 }
 
@@ -45,8 +46,8 @@ model Session {
   userAgent String?
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
- 
 
+  @@index([token])
   @@map("session")
 }
 
@@ -91,7 +92,7 @@ model Invitation {
   createdAt   DateTime @default(now())
 
   invitedById String
-  invitedBy   User     @relation("UserInvitations",fields: [invitedById],references: [id],onDelete: Cascade)
+  invitedBy   User     @relation("UserInvitations", fields: [invitedById], references: [id], onDelete: Cascade)
 
   @@index([email])
   @@index([expiresAt])

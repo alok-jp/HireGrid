@@ -1,4 +1,5 @@
-import { adminProcedure } from "../init";
+import { TRPCError } from "@trpc/server";
+import { adminProcedure, publicProcedure } from "../init";
 import { z } from "zod";
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
@@ -13,6 +14,23 @@ export const invitationRouter = {
   create: adminProcedure
     .input(createInvitationSchema)
     .mutation(async ({ input, ctx }) => {
+      // Check if user already exists
+      const existingUser = await prisma.user.findUnique({
+        where: { email: input.email },
+      });
+
+      if (existingUser) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "A user with this email address already exists.",
+        });
+      }
+
+      // Delete any previous pending/old invitations for this email
+      await prisma.invitation.deleteMany({
+        where: { email: input.email },
+      });
+
       const token = crypto.randomBytes(32).toString("hex");
 
       const tokenHash = crypto
@@ -21,7 +39,25 @@ export const invitationRouter = {
         .digest("hex");
 
       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      const invitationUrl = `${process.env.NEXT_PUBLIC_APP_URL}/invite/${token}`;
 
+      // Try sending email FIRST before creating DB record
+      try {
+        await sendInvitationEmail({
+          email: input.email,
+          role: input.role,
+          invitationUrl,
+        });
+      } catch (error) {
+        console.error("Failed to send invitation email:", error);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message:
+            "Failed to send invitation email. Please check your SMTP configuration.",
+        });
+      }
+
+      // Only create DB record AFTER email has been sent successfully
       await prisma.invitation.create({
         data: {
           email: input.email,
@@ -32,18 +68,56 @@ export const invitationRouter = {
         },
       });
 
-      const invitationUrl = `${process.env.NEXT_PUBLIC_APP_URL}/invite/${token}`;
-
-      await sendInvitationEmail({
-        email: input.email,
-        role: input.role,
-        invitationUrl,
-      });
-
       return {
         success: true,
         invitationUrl,
         expiresAt,
+      };
+    }),
+
+  getByToken: publicProcedure
+    .input(
+      z.object({
+        token: z.string().min(1, "Token is required"),
+      }),
+    )
+    .query(async ({ input }) => {
+      const tokenHash = crypto
+        .createHash("sha256")
+        .update(input.token)
+        .digest("hex");
+
+      const invitation = await prisma.invitation.findUnique({
+        where: {
+          tokenHash,
+        },
+      });
+
+      if (!invitation) {
+        return {
+          valid: false,
+          reason: "TOKEN_NOT_FOUND",
+        };
+      }
+
+      if (invitation.usedAt) {
+        return {
+          valid: false,
+          reason: "ALREADY_USED",
+        };
+      }
+
+      if (invitation.expiresAt && invitation.expiresAt < new Date()) {
+        return {
+          valid: false,
+          reason: "EXPIRED",
+        };
+      }
+
+      return {
+        valid: true,
+        invitation,
+        expiresAt: invitation.expiresAt,
       };
     }),
 };

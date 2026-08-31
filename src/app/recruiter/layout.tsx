@@ -1,17 +1,20 @@
 import { redirect } from "next/navigation";
 import { getCurrentSession } from "@/lib/get-session";
-import { AuthLayout } from "@/features/auth/auth-layout";
 
-export default async function Layout({
+export default async function RecruiterLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   const session = await getCurrentSession();
 
-  if (session) {
+  if (!session) {
+    redirect("/login");
+  }
+
+  if (session.user.role !== "RECRUITER") {
     redirect("/");
   }
 
-  return <AuthLayout>{children}</AuthLayout>;
+  return <>{children}</>;
 }
