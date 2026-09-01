@@ -7,6 +7,12 @@ export const auth = betterAuth({
     provider: "postgresql",
   }),
 
+  // Add trustedOrigins here
+  trustedOrigins: [
+    "https://hiregrid-phi.vercel.app",
+    "http://localhost:3000",
+  ],
+
   databaseHooks: {
     user: {
       create: {
