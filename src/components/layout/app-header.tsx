@@ -82,7 +82,7 @@ export function AppHeader({
       </div>
 
       <DropdownMenu>
-        <DropdownMenuTrigger className="flex items-center gap-2.5 p-1.5 rounded-[var(--radius-sm)] hover:bg-[var(--surface-2)] transition-colors cursor-pointer outline-none">
+        <DropdownMenuTrigger className="flex items-center gap-2.5 p-1.5 rounded-sm hover:bg-[var(--surface-2)] transition-colors cursor-pointer outline-none">
           <span className="w-7 h-7 rounded-full bg-[var(--accent-soft)] text-[var(--accent)] flex items-center justify-center text-xs font-semibold">
             {initial}
           </span>

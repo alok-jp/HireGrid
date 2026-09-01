@@ -23,6 +23,15 @@ enum JobOpeningStatus {
   ARCHIVED
 }
 
+enum ApplicationStage {
+  APPLIED
+  SCREENING
+  INTERVIEW
+  OFFER
+  HIRED
+  REJECTED
+}
+
 model User {
   id            String       @id @default(cuid())
   name          String
@@ -101,6 +110,7 @@ model Invitation {
 
   @@index([email])
   @@index([expiresAt])
+  @@index([usedAt])
   @@map("invitation")
 }
 
@@ -116,23 +126,29 @@ model JobOpening {
   applications Application[]
 
   @@index([status])
+  @@index([createdAt])
+  @@index([department])
   @@map("job_opening")
 }
 
 model Application {
-  id            String     @id @default(cuid())
-  candidateName String
-  email         String
-  source        String
-  notes         String?
-  stage         String     @default("Applied")
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
+  id                   String           @id @default(cuid())
+  candidateName        String
+  email                String
+  source               String
+  notes                String?
+  stage                ApplicationStage @default(APPLIED)
+  stageBeforeRejection ApplicationStage?
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
 
-  jobOpeningId  String
-  jobOpening    JobOpening @relation(fields: [jobOpeningId], references: [id], onDelete: Cascade)
+  jobOpeningId         String
+  jobOpening           JobOpening       @relation(fields: [jobOpeningId], references: [id], onDelete: Cascade)
 
   @@index([jobOpeningId])
   @@index([email])
+  @@index([stage])
+  @@index([createdAt])
+  @@index([jobOpeningId, stage])
   @@map("application")
 }

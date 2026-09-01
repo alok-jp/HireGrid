@@ -149,7 +149,7 @@ export function JobOpeningForm({ jobOpening }: JobOpeningFormProps) {
                   <FormControl>
                     <Textarea
                       placeholder="Describe the responsibilities, requirements, and scope of this role..."
-                      className="min-h-[150px]"
+                      className="min-h-37.5"
                       disabled={isPending}
                       {...field}
                     />

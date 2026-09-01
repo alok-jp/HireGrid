@@ -1,12 +1,12 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createCaller } from "@/trpc/routers/_app";
 import { createTRPCContext } from "@/trpc/context";
 import { ApplicationList } from "@/features/applications/application-list";
+import { ApplicationSkeleton } from "@/components/ui/skeletons";
 import { Badge } from "@/components/ui/badge";
-import { buttonVariants } from "@/components/ui/button";
 import { ArrowLeft, Building2, Pencil, Plus } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 export default async function JobOpeningDetailPage({
   params,
@@ -32,16 +32,16 @@ export default async function JobOpeningDetailPage({
       <div className="space-y-3">
         <Link
           href="/recruiter/job-openings"
-          className="inline-flex items-center text-xs text-muted-foreground hover:text-foreground transition-colors"
+          className="inline-flex items-center text-xs text-(--text-secondary) hover:text-(--text-primary) transition-colors"
         >
           <ArrowLeft className="mr-1 h-3.5 w-3.5" />
           Back to Job Openings
         </Link>
 
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b pb-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-[var(--border-subtle)] pb-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2.5">
-              <h1 className="text-2xl font-bold tracking-tight">
+              <h1 className="text-title text-[var(--text-primary)]">
                 {jobOpening.title}
               </h1>
               <Badge
@@ -51,7 +51,7 @@ export default async function JobOpeningDetailPage({
                 {jobOpening.status}
               </Badge>
             </div>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
               <Building2 className="h-3.5 w-3.5" />
               <span>{jobOpening.department}</span>
               <span>•</span>
@@ -62,7 +62,7 @@ export default async function JobOpeningDetailPage({
           <div className="flex items-center gap-2">
             <Link
               href={`/recruiter/job-openings/${jobOpening.id}/edit`}
-              className={cn(buttonVariants({ variant: "outline", size: "sm" }), "gap-1.5 text-xs")}
+              className="px-3 py-1.5 rounded-[var(--radius-sm)] border border-[var(--border-default)] text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-1)] transition-colors inline-flex items-center gap-1.5"
             >
               <Pencil className="h-3.5 w-3.5" />
               Edit Position
@@ -70,7 +70,7 @@ export default async function JobOpeningDetailPage({
 
             <Link
               href={`/recruiter/job-openings/${jobOpening.id}/applications/create`}
-              className={cn(buttonVariants({ variant: "default", size: "sm" }), "gap-1.5 font-semibold text-xs")}
+              className="btn-primary text-xs font-semibold inline-flex items-center gap-1.5"
             >
               <Plus className="h-3.5 w-3.5" />
               Add Candidate
@@ -80,17 +80,19 @@ export default async function JobOpeningDetailPage({
       </div>
 
       {/* Description Summary */}
-      <div className="rounded-lg border bg-card/60 p-4 space-y-1">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+      <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-1)] p-4 space-y-1">
+        <h3 className="text-micro font-bold tracking-wider text-[var(--text-tertiary)] uppercase">
           Role Description
         </h3>
-        <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-line">
+        <p className="text-xs text-[var(--text-secondary)] leading-relaxed whitespace-pre-line">
           {jobOpening.description}
         </p>
       </div>
 
-      {/* Candidate Applications */}
-      <ApplicationList jobOpeningId={jobOpening.id} />
+      {/* Streaming Candidate Applications */}
+      <Suspense fallback={<ApplicationSkeleton />}>
+        <ApplicationList jobOpeningId={jobOpening.id} />
+      </Suspense>
     </div>
   );
 }

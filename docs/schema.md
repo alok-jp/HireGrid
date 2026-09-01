@@ -66,7 +66,8 @@ Answer each of these, in your own words.
 - `email`: String
 - `source`: String
 - `notes`: String (optional)
-- `stage`: String (default: "Applied")
+- `stage`: ApplicationStage Enum (`APPLIED`, `SCREENING`, `INTERVIEW`, `OFFER`, `HIRED`, `REJECTED`, default: `APPLIED`)
+- `stageBeforeRejection`: ApplicationStage Enum (optional, tracks previous stage prior to rejection)
 - `jobOpeningId`: String (foreign key -> `job_opening.id`, cascade delete)
 - `createdAt`, `updatedAt`: DateTime
 
@@ -86,18 +87,15 @@ Answer each of these, in your own words.
 
 ## Constraints: Database vs. Application Code
 
-- **Database**: Primary keys, foreign key relations, unique constraints (`user.email`, `session.token`, `invitation.tokenHash`), status enums (`Role`, `JobOpeningStatus`), cascade deletes, and indexes on `job_opening.status`, `application.jobOpeningId`, and `application.email`.
-- **Application Code**: Zod form validation, role authorization middleware (`recruiterProcedure`, `adminProcedure`), and stage transition logic.
+- **Database**: Primary keys, foreign key relations, unique constraints (`user.email`, `session.token`, `invitation.tokenHash`), status enums (`Role`, `JobOpeningStatus`, `ApplicationStage`), cascade deletes, and indexes on `job_opening.status`, `job_opening.createdAt`, `application.jobOpeningId`, `application.email`, `application.stage`, and composite `[jobOpeningId, stage]`.
+- **Application Code**: Zod form validation, role authorization middleware (`recruiterProcedure`, `adminProcedure`), and stage transition logic (`getNextStage`).
 - **Why**: Database constraints protect storage integrity, while application code provides instant user feedback.
 
 ---
 
 ## Deliberate Denormalisation
 
-- Stored `role` directly on `user` and `status` directly on `job_opening` as enums instead of join tables, avoiding extra joins on every request.
+- Stored `role` directly on `user`, `status` directly on `job_opening`, and `stage` directly on `application` as enums instead of join tables, avoiding extra joins on every request.
 
 ---
 
-## What would break first at 100x the data?
-
-- Searching large application datasets across candidate name and email text without full-text search indexes. Adding PostgreSQL GIN / Trigram indexes on `candidateName` and `email` ensures sub-10ms search at scale.

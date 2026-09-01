@@ -46,3 +46,13 @@ Redesign this UI to feel like a premium, highly functional product rather than a
 
 ### What you got
 Got a 10-point UI architecture plan to collapse user identity into an avatar menu, convert admin 4-card metrics into a flat typography stat row, remove redundant card borders/buttons, replace stage pills with compact border accents, and add Framer Motion disclosures.
+
+---
+
+## Implementing Application Pipeline Structure
+
+### Prompt
+What is the best way to implement the pipeline structure (APPLIED -> SCREENING -> INTERVIEW -> OFFER -> HIRED) with rejection, reinstatement, and server-enforced stage progression?
+
+### What you got
+Received an architectural plan to define `ApplicationStage` enum in Prisma, add `stageBeforeRejection` field to preserve pre-rejection state, build a centralized transition helper (`getNextStage`), restrict transition endpoints to `recruiterProcedure` middleware, and calculate stage advancement strictly on the server without accepting client stage overrides.

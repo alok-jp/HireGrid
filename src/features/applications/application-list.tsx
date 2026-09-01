@@ -9,19 +9,23 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { ApplicationStageTracker } from "@/features/applications/application-stage";
+import { ApplicationActions } from "@/features/applications/application-actions";
 import { Plus, Pencil, MoreHorizontal, UserCheck } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { ApplicationStage } from "@/generated/prisma/enums";
 
 interface ApplicationListProps {
   jobOpeningId: string;
 }
 
 const STAGE_COLOR: Record<string, string> = {
-  Applied: "var(--text-tertiary)",
-  Screening: "var(--status-pending)",
-  Interview: "var(--accent)",
-  Offer: "var(--status-active)",
-  Rejected: "#dc2626",
+  APPLIED: "var(--text-tertiary)",
+  SCREENING: "var(--status-pending)",
+  INTERVIEW: "var(--accent)",
+  OFFER: "var(--status-active)",
+  HIRED: "#10b981",
+  REJECTED: "#dc2626",
 };
 
 export function ApplicationList({ jobOpeningId }: ApplicationListProps) {
@@ -32,11 +36,11 @@ export function ApplicationList({ jobOpeningId }: ApplicationListProps) {
 
   if (isLoading) {
     return (
-      <div className="space-y-2">
+      <div className="space-y-3">
         {[1, 2, 3].map((item) => (
-          <div key={item} className="p-4 rounded-[var(--radius-sm)] border-l-4 border-l-transparent bg-[var(--surface-1)]">
-            <div className="skeleton w-36 h-4 mb-1" />
-            <div className="skeleton w-24 h-3" />
+          <div key={item} className="p-4 rounded-md border bg-(--surface-1) space-y-3">
+            <div className="skeleton w-36 h-4" />
+            <div className="skeleton w-full h-8" />
           </div>
         ))}
       </div>
@@ -60,7 +64,7 @@ export function ApplicationList({ jobOpeningId }: ApplicationListProps) {
       </div>
 
       {!data || data.length === 0 ? (
-        <div className="py-10 text-center border border-dashed border-[var(--border-subtle)] rounded-[var(--radius-md)]">
+        <div className="py-10 text-center border border-dashed border-[var(--border-subtle)] rounded-md">
           <UserCheck className="h-8 w-8 text-[var(--text-tertiary)] mx-auto mb-2" />
           <p className="text-body font-semibold">No candidate applications yet</p>
           <p className="text-meta mt-1 mb-4">
@@ -75,7 +79,7 @@ export function ApplicationList({ jobOpeningId }: ApplicationListProps) {
           </Link>
         </div>
       ) : (
-        <div className="space-y-1.5">
+        <div className="space-y-3">
           {data.map((app) => {
             const stageColor = STAGE_COLOR[app.stage] || "var(--text-secondary)";
             const timeAgo = formatDistanceToNow(new Date(app.createdAt), {
@@ -85,47 +89,61 @@ export function ApplicationList({ jobOpeningId }: ApplicationListProps) {
             return (
               <div
                 key={app.id}
-                className="flex items-center justify-between p-3.5 rounded-r-[var(--radius-sm)] border-l-[3px] bg-[var(--surface-0)] hover:bg-[var(--surface-1)] transition-colors group"
-                style={{ borderLeftColor: stageColor }}
+                className="p-4 rounded-md border border-[var(--border-subtle)] bg-(--surface-0) hover:border-(--border-default) transition-colors space-y-4"
               >
-                <div className="space-y-0.5">
-                  <div className="flex items-center gap-2">
-                    <span className="text-body font-semibold">{app.candidateName}</span>
-                    <span className="text-meta">· {app.email}</span>
+                {/* Header Row: Candidate Info & Stage Actions */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-[var(--border-subtle)] pb-3">
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-body font-bold text-[var(--text-primary)]">
+                        {app.candidateName}
+                      </span>
+                      <span className="text-meta">· {app.email}</span>
+                    </div>
+                    <div className="text-meta text-xs">
+                      <span className="font-semibold">{app.source}</span> · Applied {timeAgo}
+                      {app.notes ? (
+                        <span className="ml-2 text-[var(--text-tertiary)] italic">— {app.notes}</span>
+                      ) : null}
+                    </div>
                   </div>
-                  <div className="text-meta text-xs">
-                    {app.source} · Applied {timeAgo}
-                    {app.notes ? <span className="ml-2 text-[var(--text-tertiary)] line-clamp-1 italic">— {app.notes}</span> : null}
+
+                  <div className="flex items-center gap-3 self-end sm:self-auto">
+                    {/* Advance / Reject / Reinstate Action Buttons */}
+                    <ApplicationActions
+                      application={{
+                        id: app.id,
+                        stage: app.stage as ApplicationStage,
+                        stageBeforeRejection: app.stageBeforeRejection as ApplicationStage | null,
+                      }}
+                    />
+
+                    {/* Overflow Edit Menu */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger className="w-7 h-7 flex items-center justify-center rounded-sm text-[var(--text-tertiary)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)] transition-colors outline-none">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-40">
+                        <DropdownMenuItem
+                          onClick={() =>
+                            router.push(
+                              `/recruiter/job-openings/${jobOpeningId}/applications/${app.id}/edit`,
+                            )
+                          }
+                        >
+                          <Pencil className="mr-2 h-3.5 w-3.5" />
+                          Edit Details
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-4">
-                  <span
-                    className="text-meta font-semibold"
-                    style={{ color: stageColor }}
-                  >
-                    {app.stage}
-                  </span>
-
-                  {/* Contextual Action Menu */}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger className="w-7 h-7 flex items-center justify-center rounded-[var(--radius-sm)] text-[var(--text-tertiary)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)] transition-colors outline-none">
-                      <MoreHorizontal className="h-4 w-4" />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-40">
-                      <DropdownMenuItem
-                        onClick={() =>
-                          router.push(
-                            `/recruiter/job-openings/${jobOpeningId}/applications/${app.id}/edit`,
-                          )
-                        }
-                      >
-                        <Pencil className="mr-2 h-3.5 w-3.5" />
-                        Edit Candidate
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
+                {/* Pipeline Visual Step Tracker */}
+                <ApplicationStageTracker
+                  stage={app.stage as ApplicationStage}
+                  stageBeforeRejection={app.stageBeforeRejection as ApplicationStage | null}
+                />
               </div>
             );
           })}

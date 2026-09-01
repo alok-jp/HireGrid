@@ -14,7 +14,6 @@ async function main() {
     );
   }
 
-
   const existingAdmin = await prisma.user.findFirst({
     where: {
       email: {
@@ -103,7 +102,6 @@ async function main() {
     existingJobs = await prisma.jobOpening.findMany();
   }
 
-
   const existingAppsCount = await prisma.application.count();
   if (existingAppsCount === 0 && existingJobs.length > 0) {
     const fullstackJob = existingJobs.find(j => j.title.includes("Fullstack")) ?? existingJobs[0];
@@ -118,7 +116,7 @@ async function main() {
           email: "alice.smith@example.com",
           source: "LinkedIn",
           notes: "Strong background in React 19, Next.js App Router, and Node.js backend architecture.",
-          stage: "Applied",
+          stage: "APPLIED",
           jobOpeningId: fullstackJob.id,
         },
         {
@@ -126,7 +124,7 @@ async function main() {
           email: "bob.johnson@example.com",
           source: "Referral",
           notes: "Referred by senior staff engineer. Great system design experience.",
-          stage: "Applied",
+          stage: "APPLIED",
           jobOpeningId: fullstackJob.id,
         },
         {
@@ -134,7 +132,7 @@ async function main() {
           email: "carol.williams@example.com",
           source: "Direct / Career Site",
           notes: "5 years product management experience leading SaaS pipelines.",
-          stage: "Applied",
+          stage: "APPLIED",
           jobOpeningId: pmJob.id,
         },
       ],
