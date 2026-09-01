@@ -53,7 +53,7 @@ export function LoginForm() {
       },
       {
         onSuccess: (ctx) => {
-          const role = ctx.data?.user?.role;
+          const role = ctx.data?.user?.role; 
           if (role === "MASTER_ADMIN") {
             router.push("/admin");
           } else if (role === "RECRUITER") {
@@ -166,3 +166,5 @@ export function LoginForm() {
     </div>
   );
 }
+
+

@@ -14,7 +14,7 @@ export const invitationRouter = {
   create: adminProcedure
     .input(createInvitationSchema)
     .mutation(async ({ input, ctx }) => {
-      // Check if user already exists
+      
       const existingUser = await prisma.user.findUnique({
         where: { email: input.email },
       });
@@ -26,7 +26,6 @@ export const invitationRouter = {
         });
       }
 
-      // Delete any previous pending/old invitations for this email
       await prisma.invitation.deleteMany({
         where: { email: input.email },
       });
@@ -38,7 +37,9 @@ export const invitationRouter = {
       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
       const invitationUrl = `${process.env.NEXT_PUBLIC_APP_URL}/invite/${token}`;
 
-      // Try sending email FIRST before creating DB record
+      console.log(invitationUrl);
+
+      
       try {
         await sendInvitationEmail({
           email: input.email,

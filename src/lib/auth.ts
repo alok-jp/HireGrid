@@ -11,10 +11,10 @@ export const auth = betterAuth({
     user: {
       create: {
         before: async (user) => {
-          // Allow seeding master admin if ADMIN_EMAIL matches
+          // Allow seeding master admin if ADMIN_EMAIL matches (case-insensitive)
           if (
             process.env.ADMIN_EMAIL &&
-            user.email === process.env.ADMIN_EMAIL
+            user.email.toLowerCase() === process.env.ADMIN_EMAIL.toLowerCase()
           ) {
             return {
               data: {
@@ -26,7 +26,10 @@ export const auth = betterAuth({
 
           const invitation = await prisma.invitation.findFirst({
             where: {
-              email: user.email,
+              email: {
+                equals: user.email,
+                mode: "insensitive",
+              },
               usedAt: null,
               expiresAt: {
                 gt: new Date(),

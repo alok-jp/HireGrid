@@ -18,6 +18,11 @@ enum Role {
   INTERVIEWER
 }
 
+enum JobOpeningStatus {
+  OPEN
+  ARCHIVED
+}
+
 model User {
   id            String       @id @default(cuid())
   name          String
@@ -97,4 +102,36 @@ model Invitation {
   @@index([email])
   @@index([expiresAt])
   @@map("invitation")
+}
+
+model JobOpening {
+
+  id String @id @default(cuid())
+  title String
+  department String
+  description String
+  status JobOpeningStatus @default(OPEN)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  applications Application[]
+
+  @@map("job_opening")
+  @@index([status])
+
+}
+
+model Application{
+
+  id String @id @default(cuid())
+  candidateName String
+  email String
+  source String
+  notes String
+
+  jobOpeningId String
+  jobOpening JobOpening @relation(fields: [jobOpeningId], references:[id])
+
+  
 }
