@@ -105,33 +105,34 @@ model Invitation {
 }
 
 model JobOpening {
-
-  id String @id @default(cuid())
-  title String
-  department String
+  id          String           @id @default(cuid())
+  title       String
+  department  String
   description String
-  status JobOpeningStatus @default(OPEN)
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  status      JobOpeningStatus @default(OPEN)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
 
   applications Application[]
 
-  @@map("job_opening")
   @@index([status])
-
+  @@map("job_opening")
 }
 
-model Application{
-
-  id String @id @default(cuid())
+model Application {
+  id            String     @id @default(cuid())
   candidateName String
-  email String
-  source String
-  notes String
+  email         String
+  source        String
+  notes         String?
+  stage         String     @default("Applied")
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
 
-  jobOpeningId String
-  jobOpening JobOpening @relation(fields: [jobOpeningId], references:[id])
+  jobOpeningId  String
+  jobOpening    JobOpening @relation(fields: [jobOpeningId], references: [id], onDelete: Cascade)
 
-  
+  @@index([jobOpeningId])
+  @@index([email])
+  @@map("application")
 }

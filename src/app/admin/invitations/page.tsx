@@ -1,21 +1,31 @@
+import Link from "next/link";
 import { InviteForm } from "@/features/invitations/invite-form";
+import { ArrowLeft } from "lucide-react";
 
 export default function InvitationsPage() {
   return (
-    <main className="min-h-screen bg-muted/40 p-6 md:p-10">
-      <div className="mx-auto max-w-2xl">
-        <div className="rounded-xl border bg-background p-6 shadow-sm">
-          <div className="mb-6">
-            <h1 className="text-2xl font-semibold">Invite team member</h1>
-
-            <p className="mt-1 text-sm text-muted-foreground">
-              Invite a recruiter or interviewer to join the hiring pipeline.
-            </p>
-          </div>
-
-          <InviteForm />
+    <div className="container mx-auto max-w-xl space-y-6 p-6 sm:p-8">
+      {/* Header */}
+      <div className="space-y-2">
+        <Link
+          href="/admin"
+          className="inline-flex items-center text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+        >
+          <ArrowLeft className="mr-1 h-3.5 w-3.5" />
+          Back to Admin Dashboard
+        </Link>
+        <div className="border-b border-[var(--border-subtle)] pb-4">
+          <h1 className="text-title">Invite Team Member</h1>
+          <p className="text-meta mt-1">
+            Send an email invitation link to onboard recruiters or interviewers.
+          </p>
         </div>
       </div>
-    </main>
+
+      {/* Form Container */}
+      <div className="p-6 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-0)] shadow-xs">
+        <InviteForm />
+      </div>
+    </div>
   );
 }

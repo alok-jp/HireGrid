@@ -2,10 +2,11 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
+import { PermissionInfo } from "@/components/admin/permission-info";
 
 import {
   Form,
@@ -20,7 +21,7 @@ import { Input } from "@/components/ui/input";
 import { trpc } from "@/trpc/client";
 
 const inviteSchema = z.object({
-  email: z.email("Please enter a valid email address"),
+  email: z.string().email("Please enter a valid email address"),
   role: z.enum(["INTERVIEWER", "RECRUITER"]),
 });
 
@@ -35,6 +36,11 @@ export function InviteForm() {
       email: "",
       role: "RECRUITER",
     },
+  });
+
+  const selectedRole = useWatch({
+    control: form.control,
+    name: "role",
   });
 
   const onSubmit = (values: InviteFormValues) => {
@@ -81,12 +87,13 @@ export function InviteForm() {
                 <select
                   {...field}
                   disabled={createInvitation.isPending}
-                  className="w-full rounded-md border p-2 bg-background"
+                  className="w-full rounded-md border p-2 bg-background text-sm font-medium"
                 >
                   <option value="RECRUITER">Recruiter</option>
                   <option value="INTERVIEWER">Interviewer</option>
                 </select>
               </FormControl>
+              <PermissionInfo role={selectedRole || "RECRUITER"} />
               <FormMessage />
             </FormItem>
           )}
@@ -94,7 +101,7 @@ export function InviteForm() {
 
         <Button
           type="submit"
-          className="w-full font-medium"
+          className="w-full btn-primary font-medium"
           disabled={createInvitation.isPending}
         >
           {createInvitation.isPending ? (

@@ -36,13 +36,10 @@ export const adminProcedure = protectedProcedure.use(async ({ ctx, next }) => {
 
 export const recruiterProcedure = protectedProcedure.use(
   async ({ ctx, next }) => {
-    if (
-      ctx.session.user.role !== "RECRUITER" &&
-      ctx.session.user.role !== "MASTER_ADMIN"
-    ) {
+    if (ctx.session.user.role !== "RECRUITER") {
       throw new TRPCError({
         code: "FORBIDDEN",
-        message: "Recruiter or Admin access required",
+        message: "Only recruiter can access this",
       });
     }
 

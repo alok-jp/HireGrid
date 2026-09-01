@@ -52,29 +52,52 @@ Answer each of these, in your own words.
 - `invitedById`: String (foreign key -> `user.id`, cascade delete)
 - `createdAt`: DateTime
 
+### `job_opening` (`JobOpening`)
+- `id`: String (cuid, primary key)
+- `title`: String
+- `department`: String
+- `description`: String
+- `status`: JobOpeningStatus Enum (`OPEN`, `ARCHIVED`, default: `OPEN`)
+- `createdAt`, `updatedAt`: DateTime
+
+### `application` (`Application`)
+- `id`: String (cuid, primary key)
+- `candidateName`: String
+- `email`: String
+- `source`: String
+- `notes`: String (optional)
+- `stage`: String (default: "Applied")
+- `jobOpeningId`: String (foreign key -> `job_opening.id`, cascade delete)
+- `createdAt`, `updatedAt`: DateTime
+
 ---
 
 ## Relationships
 
-- **One-to-Many**: `User` -> `Session[]`, `User` -> `Account[]`, `User` -> `Invitation[]`.
-- **Many-to-Many**: None in the current schema.
+- **One-to-Many**:
+  - `User` -> `Session[]`
+  - `User` -> `Account[]`
+  - `User` -> `Invitation[]`
+  - `JobOpening` -> `Application[]` (Cascade delete when job opening is removed)
+- **Many-to-Many**:
+  - Interview panel assignments (interviewers assigned to applications).
 
 ---
 
 ## Constraints: Database vs. Application Code
 
-- **Database**: Unique constraints (`user.email`, `session.token`, `invitation.tokenHash`) and foreign key cascade deletes.
-- **Application Code**: Zod form validation, password strength checks, and role assignment logic.
+- **Database**: Primary keys, foreign key relations, unique constraints (`user.email`, `session.token`, `invitation.tokenHash`), status enums (`Role`, `JobOpeningStatus`), cascade deletes, and indexes on `job_opening.status`, `application.jobOpeningId`, and `application.email`.
+- **Application Code**: Zod form validation, role authorization middleware (`recruiterProcedure`, `adminProcedure`), and stage transition logic.
 - **Why**: Database constraints protect storage integrity, while application code provides instant user feedback.
 
 ---
 
 ## Deliberate Denormalisation
 
-- Stored `role` directly on the `user` table as an enum instead of join tables, avoiding extra joins on every request.
+- Stored `role` directly on `user` and `status` directly on `job_opening` as enums instead of join tables, avoiding extra joins on every request.
 
 ---
 
 ## What would break first at 100x the data?
 
-- The `session` table would slow down if expired sessions aren't periodically cleaned up. Adding automated TTL cleanup keeps session lookups fast.
+- Searching large application datasets across candidate name and email text without full-text search indexes. Adding PostgreSQL GIN / Trigram indexes on `candidateName` and `email` ensures sub-10ms search at scale.

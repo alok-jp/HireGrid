@@ -7,7 +7,17 @@ import { useState } from "react";
 import { trpc } from "./client";
 
 export function TRPCProvider({ children }: { children: React.ReactNode }) {
-  const [queryClient] = useState(() => new QueryClient());
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            staleTime: 5 * 1000,
+            refetchOnWindowFocus: false,
+          },
+        },
+      }),
+  );
 
   const [trpcClient] = useState(() =>
     trpc.createClient({

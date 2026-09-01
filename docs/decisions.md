@@ -35,3 +35,9 @@ below, not necessarily the last one; add a **Later reversed:** line to whichever
 - **Chose:** `prisma db push` during active development.
 - **Rejected:** Generating migration files with `prisma migrate dev` on every schema change.
 - **Why:** Speeds up rapid schema iterations without getting blocked by migration drift prompts.
+
+## Decision 6
+
+- **Chose:** Next.js Server Component Layout Guards (`layout.tsx` role check + `redirect()`).
+- **Rejected:** Solely relying on client-side routing hooks or dedicated standalone API routing wrappers for page-level access control.
+- **Why:** Server layouts execute before page rendering, preventing unauthorized HTML payload delivery, eliminating client-side layout flashing, and keeping route protection clean and collocated.

@@ -14,7 +14,7 @@ async function main() {
     );
   }
 
-  // 1. Seed Master Admin (case-insensitive lookup)
+
   const existingAdmin = await prisma.user.findFirst({
     where: {
       email: {
@@ -62,9 +62,8 @@ async function main() {
     console.log(`${ADMIN_EMAIL} is already a MASTER_ADMIN`);
   }
 
-  // 2. Seed Demo Job Openings (at least 3 OPEN, at least 1 ARCHIVED)
-  const existingJobsCount = await prisma.jobOpening.count();
-  if (existingJobsCount === 0) {
+  let existingJobs = await prisma.jobOpening.findMany();
+  if (existingJobs.length === 0) {
     console.log("Seeding demo job openings...");
 
     await prisma.jobOpening.createMany({
@@ -101,8 +100,47 @@ async function main() {
     });
 
     console.log("Seeded 3 OPEN and 1 ARCHIVED job openings.");
-  } else {
-    console.log(`Database already has ${existingJobsCount} job openings.`);
+    existingJobs = await prisma.jobOpening.findMany();
+  }
+
+
+  const existingAppsCount = await prisma.application.count();
+  if (existingAppsCount === 0 && existingJobs.length > 0) {
+    const fullstackJob = existingJobs.find(j => j.title.includes("Fullstack")) ?? existingJobs[0];
+    const pmJob = existingJobs.find(j => j.title.includes("Product")) ?? existingJobs[0];
+
+    console.log("Seeding demo candidate applications...");
+
+    await prisma.application.createMany({
+      data: [
+        {
+          candidateName: "Alice Smith",
+          email: "alice.smith@example.com",
+          source: "LinkedIn",
+          notes: "Strong background in React 19, Next.js App Router, and Node.js backend architecture.",
+          stage: "Applied",
+          jobOpeningId: fullstackJob.id,
+        },
+        {
+          candidateName: "Bob Johnson",
+          email: "bob.johnson@example.com",
+          source: "Referral",
+          notes: "Referred by senior staff engineer. Great system design experience.",
+          stage: "Applied",
+          jobOpeningId: fullstackJob.id,
+        },
+        {
+          candidateName: "Carol Williams",
+          email: "carol.williams@example.com",
+          source: "Direct / Career Site",
+          notes: "5 years product management experience leading SaaS pipelines.",
+          stage: "Applied",
+          jobOpeningId: pmJob.id,
+        },
+      ],
+    });
+
+    console.log("Seeded 3 candidate applications.");
   }
 }
 
