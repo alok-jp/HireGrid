@@ -12,32 +12,43 @@ Answer each of these, in your own words, once the system has taken real shape.
 ## What are the moving pieces, and how do they talk to each other?
 
 1. **UI Layer (Next.js 16 App Router & React 19)**:
-   - React 19 Client components for auth, invitations, job openings, candidate applications, and interviewer panel assignments built with React Hook Form and Zod.
-   - Unified `AppHeader` component managing identity dropdowns and navigation across Admin, Recruiter, and Interviewer portals.
-   - Styled with Tailwind CSS, custom design tokens in `globals.css`, Shadcn/ui (Base UI primitives), Framer Motion, and Sonner toasts.
+   - React 19 Client components for authentication, user management, job openings, candidate search, candidate detail workspace, structured interview feedback, bulk candidate actions, and interviewer panel assignments built with React Hook Form and Zod.
+   - Unified `AppHeader` component managing identity dropdowns and portal navigation across Admin, Recruiter, and Interviewer views.
+   - Styled with Tailwind CSS, custom design tokens in `globals.css`, Shadcn/ui (Base UI primitives), Framer Motion disclosures, and Sonner toast notifications.
    - Client calls tRPC typed procedures via `@trpc/react-query`.
 2. **API & Route Handlers**:
    - `/api/auth/[...all]`: Better Auth handler for session management, HTTP-only cookies, and database hooks (`user.create.before`).
    - `/api/trpc/[trpc]`: tRPC fetch handler serving type-safe RPC procedures.
-3. **Role Authorization Middleware**:
-   - Server-side middleware (`recruiterProcedure`, `adminProcedure`, `protectedProcedure`, `interviewerProcedure`) verifies session roles (`MASTER_ADMIN`, `RECRUITER`, `INTERVIEWER`) on every procedure call.
+3. **Policy Authorization & Domain Services**:
+   - Centralized policy helper functions (`src/lib/policy.ts`) enforcing `canViewApplication`, `canEditApplication`, `canAdvanceApplication`, `canRejectApplication`, `canReinstateApplication`, `canAssignInterviewer`, `canSubmitFeedback`, and `canExportApplications` across procedure handlers.
+   - Centralized domain pipeline functions (`src/lib/pipeline-service.ts`) managing single and bulk stage progressions, rejections, and reinstatements.
+   - Duplicate candidate detector (`src/lib/duplicate-detector.ts`) checking normalized emails across active candidate records.
 4. **Data Access & Storage**:
-   - Prisma ORM 7 connecting to Neon serverless PostgreSQL (`user`, `session`, `account`, `invitation`, `job_opening`, `application`, `application_interviewer`).
+   - Prisma ORM 7 connecting to Neon serverless PostgreSQL (`user`, `session`, `account`, `invitation`, `job_opening`, `application`, `application_interviewer`, `application_feedback`).
 
 ---
 
 ## Where does each piece run?
 
-- **Browser**: React UI components, client form state, Sonner toast notifications, Framer Motion disclosures, and tRPC React Query cache (`staleTime: 5000ms`, `refetchOnWindowFocus: false`).
-- **Server (Node.js)**: Next.js App Router server components, tRPC routers (`invitation`, `jobOpening`, `application`, `user`), Better Auth logic, and Nodemailer SMTP client.
+- **Browser**: React UI components, client form state, Sonner toast notifications, Framer Motion disclosures, selection state, and tRPC React Query cache (`staleTime: 5000ms`, `refetchOnWindowFocus: false`).
+- **Server (Node.js)**: Next.js App Router server components, tRPC routers (`invitation`, `jobOpening`, `application`, `user`), policy & domain services (`policy.ts`, `pipeline-service.ts`, `duplicate-detector.ts`), Better Auth logic, Nodemailer SMTP client, and in-memory CSV snapshot exporter (`csv-exporter.ts`).
 - **Database**: Hosted Neon PostgreSQL database instance.
 
 ---
 
 ## What is the request path for one representative user action, end to end?
 
-Here is what happens when a recruiter archives a job opening:
+### 1. Generating Pipeline Snapshot CSV
+1. Recruiter clicks **Export Pipeline CSV** on `/recruiter/candidates`.
+2. `CandidateSearchList` triggers `trpc.application.exportCsv.useQuery()`.
+3. An HTTP GET request reaches `/api/trpc/application.exportCsv`.
+4. Server verifies the session user via `protectedProcedure` and evaluates `canExportApplications(user)`.
+5. Server queries PostgreSQL for applications belonging to `JobOpening.status === "OPEN"`, applying viewer scope (interviewers export assigned candidates only).
+6. Server passes database records to `generateApplicationsCsv()` in `src/lib/csv-exporter.ts`, formatting columns (`Candidate Name`, `Email`, `Job Opening`, `Department`, `Stage`, `Source`, `Applied Date`, `Last Updated`) and escaping double-quotes, commas, and newlines into an in-memory CSV string.
+7. Server returns `{ filename, csvContent, count }`.
+8. Client receives the response, creates a Blob object URL (`URL.createObjectURL(blob)`), triggers an automated browser download for `pipeline-export-YYYY-MM-DD.csv`, and displays a Sonner toast notification.
 
+### 2. Archiving a Job Opening
 1. Recruiter clicks **Archive position** inside the contextual overflow menu (`DropdownMenu`) on `/recruiter/job-openings`.
 2. Client invokes `trpc.jobOpening.archive.useMutation({ id })`.
 3. An HTTP POST request reaches `/api/trpc/jobOpening.archive`.
@@ -46,30 +57,12 @@ Here is what happens when a recruiter archives a job opening:
 6. Server returns the updated job object.
 7. Client invalidates `jobOpening.list` cache via `utils.jobOpening.list.invalidate()`, triggers a Sonner toast (*"Job opening archived"*), and re-renders the list UI.
 
-Here is what happens when a recruiter assigns an interviewer to an application panel:
-
-1. Recruiter opens candidate options, clicks **Assign Interviewer**, selects an interviewer from the list, and clicks **Assign to Panel**.
-2. Client invokes `trpc.application.assignInterviewer.useMutation({ applicationId, interviewerId })`.
-3. Server executes `recruiterProcedure` validation, checks the target user exists and has `role === "INTERVIEWER"`, and executes `prisma.applicationInterviewer.upsert()`.
-4. On success, client invalidates `utils.application.getInterviewers.invalidate()`, triggers a Sonner toast (*"Interviewer assigned to panel"*), and updates the panel UI.
-
 ---
 
 ## What did you decide *not* to build, and why?
 
+- **Streamed CSV Responses**: Decided against using Node.js readable streams, Web Streams API, or chunked transfer encoding for CSV export. Direct in-memory string formatting (`generateApplicationsCsv`) inside the server procedure keeps the implementation simple, fast, and deterministic for standard hiring pipeline datasets without stream pipeline complexity.
+- **Atomic Batch Rollbacks for Bulk Actions**: Decided against wrapping bulk candidate actions in a single atomic transaction or `updateMany()`. Selected candidates may be at different pipeline stages; evaluating candidates independently allows valid candidate advances to succeed while returning explicit per-candidate refusal reasons.
+- **Dashboard, Immutable Audit Timeline, & Stalled Alerts (Requirements 8–10)**: Intentionally deferred to focus on production-hardening core pipeline features.
 - **Public Applicant Careers Portal**: Candidate applications are added directly by recruiters inside job openings as specified by core workflow rules.
 - **Resend Email Service**: Decided against using Resend because domain verification was taking too much time; opted for generic SMTP via Nodemailer instead.
-- **Client-Only Permission Guards**: Avoided relying on client-side routing checks for application access; enforced interviewer assignment validation strictly on the server inside `application.getById`.
-
----
-
-## Candidate Search & Server-Side Pagination Lifecycle
-
-Here is what happens when a user searches or filters candidates:
-
-1. Recruiter enters a search query or selects a filter (Position, Stage, Source, or Sort) on `/recruiter/candidates`.
-2. `CandidateSearchList` debounces search input (300ms) and resets the current page state to 1.
-3. Client invokes `trpc.application.list.useQuery({ search, jobOpeningId, stage, source, sortBy, sortOrder, page, pageSize })`.
-4. Server evaluates `protectedProcedure` session role. If `INTERVIEWER`, Prisma adds `where.interviewers = { some: { interviewerId: ctx.session.user.id } }`.
-5. Server executes `prisma.$transaction([findMany(...), count(...)])` with identical `where` conditions, returning the requested page slice and total matching count.
-6. Client renders matching candidate cards and updates pagination page controls (`Page X of Y`).

@@ -10,103 +10,133 @@ Answer each of these, in your own words.
 
 ---
 
-## Table by table: columns and types
+## Tables
 
-### `user`
-- `id`: String (cuid, primary key)
-- `name`: String
-- `email`: String (unique)
-- `emailVerified`: Boolean (default: false)
-- `image`: String (optional)
-- `role`: Role Enum (`MASTER_ADMIN`, `RECRUITER`, `INTERVIEWER`, default: `INTERVIEWER`)
-- `createdAt`, `updatedAt`: DateTime
+### 1. `user`
 
-### `session`
-- `id`: String (cuid, primary key)
-- `expiresAt`: DateTime
-- `token`: String (unique)
-- `ipAddress`, `userAgent`: String (optional)
-- `userId`: String (foreign key -> `user.id`, cascade delete)
-- `createdAt`, `updatedAt`: DateTime
+| Column | Type | Nullable | Default | Constraints |
+|---|---|---|---|---|
+| `id` | Text | No | `cuid()` | PK |
+| `name` | Text | No | — | — |
+| `email` | Text | No | — | UNIQUE, Index |
+| `emailVerified` | Boolean | No | `false` | — |
+| `image` | Text | Yes | `null` | — |
+| `role` | Enum (`Role`) | No | `INTERVIEWER` | — |
+| `createdAt` | Timestamp | No | `now()` | — |
+| `updatedAt` | Timestamp | No | — | — |
 
-### `account`
-- `id`: String (cuid, primary key)
-- `accountId`, `providerId`: String
-- `userId`: String (foreign key -> `user.id`, cascade delete)
-- `accessToken`, `refreshToken`, `idToken`, `password`: String (optional)
-- `createdAt`, `updatedAt`: DateTime
-
-### `verification`
-- `id`: String (cuid, primary key)
-- `identifier`, `value`: String
-- `expiresAt`: DateTime
-- `createdAt`, `updatedAt`: DateTime (optional)
-
-### `invitation`
-- `id`: String (cuid, primary key)
-- `email`: String
-- `role`: Role Enum
-- `tokenHash`: String (unique)
-- `expiresAt`: DateTime
-- `usedAt`: DateTime (optional)
-- `invitedById`: String (foreign key -> `user.id`, cascade delete)
-- `createdAt`: DateTime
-
-### `job_opening` (`JobOpening`)
-- `id`: String (cuid, primary key)
-- `title`: String
-- `department`: String
-- `description`: String
-- `status`: JobOpeningStatus Enum (`OPEN`, `ARCHIVED`, default: `OPEN`)
-- `createdAt`, `updatedAt`: DateTime
-
-### `application` (`Application`)
-- `id`: String (cuid, primary key)
-- `candidateName`: String
-- `email`: String
-- `source`: String
-- `notes`: String (optional)
-- `stage`: ApplicationStage Enum (`APPLIED`, `SCREENING`, `INTERVIEW`, `OFFER`, `HIRED`, `REJECTED`, default: `APPLIED`)
-- `stageBeforeRejection`: ApplicationStage Enum (optional, tracks previous stage prior to rejection)
-- `jobOpeningId`: String (foreign key -> `job_opening.id`, cascade delete)
-- `createdAt`, `updatedAt`: DateTime
-
-### `application_interviewer` (`ApplicationInterviewer`)
-- `applicationId`: String (foreign key -> `application.id`, cascade delete)
-- `interviewerId`: String (foreign key -> `user.id`, cascade delete)
-- `createdAt`: DateTime
-- Composite Primary Key: `@@id([applicationId, interviewerId])`
-- Indexes: `@@index([applicationId])`, `@@index([interviewerId])`
+- **Sensitive Data**: `email` (PII). Protected via HTTPS, authentication session guards, and access-controlled tRPC procedures.
 
 ---
 
-## Relationships
+### 2. `session`
 
-- **One-to-Many**:
-  - `User` -> `Session[]`
-  - `User` -> `Account[]`
-  - `User` -> `Invitation[]`
-  - `JobOpening` -> `Application[]` (Cascade delete when job opening is removed)
-- **Many-to-Many**:
-  - `Application` <-> `User` via `ApplicationInterviewer` join table (interviewers assigned to evaluate candidate applications across positions).
+| Column | Type | Nullable | Default | Constraints |
+|---|---|---|---|---|
+| `id` | Text | No | `cuid()` | PK |
+| `expiresAt` | Timestamp | No | — | — |
+| `token` | Text | No | — | UNIQUE, Index |
+| `createdAt` | Timestamp | No | `now()` | — |
+| `updatedAt` | Timestamp | No | — | — |
+| `ipAddress` | Text | Yes | `null` | — |
+| `userAgent` | Text | Yes | `null` | — |
+| `userId` | Text | No | — | FK -> `user.id` (CASCADE) |
 
----
-
-## Constraints: Database vs. Application Code
-
-- **Database**: Primary keys, composite primary key `@@id([applicationId, interviewerId])`, foreign key relations, unique constraints (`user.email`, `session.token`, `invitation.tokenHash`), status enums (`Role`, `JobOpeningStatus`, `ApplicationStage`), cascade deletes, and indexes on `job_opening.status`, `job_opening.createdAt`, `application.jobOpeningId`, `application.email`, `application.stage`, `application_interviewer.applicationId`, `application_interviewer.interviewerId`, and composite `[jobOpeningId, stage]`.
-- **Application Code**: Zod form validation, role authorization middleware (`recruiterProcedure`, `adminProcedure`), interviewer assignment server checks inside `application.getById`, and stage transition logic (`getNextStage`).
-- **Why**: Database constraints protect storage integrity and prevent duplicate panel assignments, while application code provides instant user feedback and fine-grained authorization.
+- **Sensitive Data**: `token` (Session Secret). Stored as secure HTTP-only cookies in browser, indexed in database for quick session validation.
 
 ---
 
-## Deliberate Denormalisation
+### 3. `account`
 
-- Stored `role` directly on `user`, `status` directly on `job_opening`, and `stage` directly on `application` as enums instead of join tables, avoiding extra joins on every request.
+| Column | Type | Nullable | Default | Constraints |
+|---|---|---|---|---|
+| `id` | Text | No | `cuid()` | PK |
+| `accountId` | Text | No | — | — |
+| `providerId` | Text | No | — | — |
+| `userId` | Text | No | — | FK -> `user.id` (CASCADE) |
+| `password` | Text | Yes | `null` | Password hash |
+
+- **Sensitive Data**: `password` (Hashed Credential). Hashed automatically using Scrypt by Better Auth before storing. Never exposed in API responses.
 
 ---
 
-## Candidate Search & Indexing Architecture
+### 4. `invitation`
 
-- **Server-Side Pagination Querying**: `application.list` executes `skip = (page - 1) * pageSize` and `take = pageSize` combined with `count()` in a PostgreSQL transaction, guaranteeing that only the active page size (default 15/20) is transferred over the network.
-- **Index Support**: Relies on PostgreSQL B-Tree indexes on `application.jobOpeningId`, `application.stage`, `application.source`, `application.createdAt`, `application.updatedAt`, and composite `[jobOpeningId, stage]` for sub-10ms filter and sort execution.
+| Column | Type | Nullable | Default | Constraints |
+|---|---|---|---|---|
+| `id` | Text | No | `cuid()` | PK |
+| `email` | Text | No | — | Index |
+| `role` | Enum (`Role`) | No | — | — |
+| `tokenHash` | Text | No | — | UNIQUE |
+| `expiresAt` | Timestamp | No | — | Index |
+| `usedAt` | Timestamp | Yes | `null` | Index |
+| `createdAt` | Timestamp | No | `now()` | — |
+| `invitedById` | Text | No | — | FK -> `user.id` (CASCADE) |
+
+- **Sensitive Data**: `tokenHash` (Invitation Secret). Hashed using SHA-256 before saving to DB. Magic link emails contain raw token; DB only holds hash.
+
+---
+
+### 5. `job_opening`
+
+| Column | Type | Nullable | Default | Constraints |
+|---|---|---|---|---|
+| `id` | Text | No | `cuid()` | PK |
+| `title` | Text | No | — | — |
+| `department` | Text | No | — | Index |
+| `description` | Text | No | — | — |
+| `status` | Enum (`JobOpeningStatus`) | No | `OPEN` | Index |
+| `createdAt` | Timestamp | No | `now()` | Index |
+| `updatedAt` | Timestamp | No | — | — |
+
+---
+
+### 6. `application`
+
+| Column | Type | Nullable | Default | Constraints |
+|---|---|---|---|---|
+| `id` | Text | No | `cuid()` | PK |
+| `candidateName` | Text | No | — | — |
+| `email` | Text | No | — | Index |
+| `source` | Text | No | — | Index |
+| `notes` | Text | Yes | `null` | — |
+| `stage` | Enum (`ApplicationStage`) | No | `APPLIED` | Index |
+| `stageBeforeRejection` | Enum (`ApplicationStage`) | Yes | `null` | — |
+| `jobOpeningId` | Text | No | — | FK -> `job_opening.id` (CASCADE), Index |
+| `createdAt` | Timestamp | No | `now()` | Index |
+| `updatedAt` | Timestamp | No | — | Index |
+
+- **Indexes**: `@@index([jobOpeningId])`, `@@index([email])`, `@@index([stage])`, `@@index([source])`, `@@index([createdAt])`, `@@index([updatedAt])`, `@@index([jobOpeningId, stage])`.
+
+---
+
+### 7. `application_interviewer`
+
+| Column | Type | Nullable | Default | Constraints |
+|---|---|---|---|---|
+| `applicationId` | Text | No | — | FK -> `application.id` (CASCADE), PK |
+| `interviewerId` | Text | No | — | FK -> `user.id` (CASCADE), PK |
+| `createdAt` | Timestamp | No | `now()` | — |
+
+- **Primary Key**: `@@id([applicationId, interviewerId])` composite key.
+- **Indexes**: `@@index([applicationId])`, `@@index([interviewerId])`.
+
+---
+
+### 8. `application_feedback`
+
+| Column | Type | Nullable | Default | Constraints |
+|---|---|---|---|---|
+| `id` | Text | No | `cuid()` | PK |
+| `applicationId` | Text | No | — | FK -> `application.id` (CASCADE) |
+| `interviewerId` | Text | No | — | FK -> `user.id` (CASCADE) |
+| `recommendation` | Enum (`Recommendation`) | No | — | `STRONG_HIRE`, `HIRE`, `NO_HIRE`, `STRONG_NO_HIRE` |
+| `technicalRating` | Int | No | `3` | 1–5 score |
+| `communicationRating` | Int | No | `3` | 1–5 score |
+| `problemSolvingRating` | Int | No | `3` | 1–5 score |
+| `comments` | Text | No | — | Detailed text feedback |
+| `createdAt` | Timestamp | No | `now()` | — |
+| `updatedAt` | Timestamp | No | — | — |
+
+- **Unique Constraint**: `@@unique([applicationId, interviewerId])`.
+- **Indexes**: `@@index([applicationId])`, `@@index([interviewerId])`.

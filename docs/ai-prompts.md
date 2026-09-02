@@ -66,3 +66,15 @@ In frontend it shows the id instead of name when I select the interviewer from d
 
 ### What you got
 Updated `InterviewPanel` and `CandidateSearchList` select components to resolve selected IDs against loaded arrays (`selectedJobOpening`, `selectedInterviewer`) and explicitly render human-readable name/title labels inside `<SelectValue>` while preserving database IDs in state and mutation payloads.
+
+---
+
+## Generating Pipeline Snapshot CSV from Database Records
+
+### Prompt
+How should I generate a CSV snapshot of open job position candidates server-side from PostgreSQL records without using streaming, and download it cleanly in the browser?
+
+### What you got
+Received an implementation pattern to create a server helper function `generateApplicationsCsv(applications)` in `src/lib/csv-exporter.ts` that iterates over fetched Prisma database records, formats columns (`Candidate Name`, `Email`, `Job Opening`, `Department`, `Stage`, `Source`, `Applied Date`, `Last Updated`), and escapes special characters (`"`, `,`, `\n`) into a single CSV string. The server procedure `application.exportCsv` queries active open job openings, applies viewer authorization limits, and returns `{ filename, csvContent, count }`. On the client, `CandidateSearchList` triggers the procedure refetch and uses `URL.createObjectURL(new Blob([csvContent]))` to initiate instant browser download without requiring streaming middleware.
+
+---

@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start",
+    "test": "tsx src/__tests__/pipeline-policy.test.ts",
     "lint": "biome check",
     "format": "biome format --write",
     "db:seed": "tsx prisma/seed.ts"

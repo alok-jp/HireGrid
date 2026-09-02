@@ -18,6 +18,8 @@ Answer each of these, in your own words.
 - **Session 5: Applications & UI Redesign**: `Application` schema & relations, `applicationRouter` procedures, `ApplicationForm`/`ApplicationList` components, unified `AppHeader`, design tokens in `globals.css`, flat typography stat row, and decluttered card list views.
 - **Session 6: Interview Panel Feature & Auto-Registration**: `ApplicationInterviewer` join table, `user.getInterviewers` & `application.assignInterviewer` / `removeInterviewer` / `myAssigned` procedures, `InterviewPanel` UI component, `InterviewerApplicationList` dashboard, and automatic default `INTERVIEWER` role assignment on signup.
 - **Session 7: Candidate Search, Filtering & Pagination**: `application.list` & `application.getSources` server procedures, `CandidateSearchList` client component, debounced search, position/stage/source filters, whitelisted sorting, server pagination, and Select label display resolution.
+- **Session 8: Bulk Candidate Actions & Simple CSV Export**: `application.bulkAdvance` and `application.bulkReject` procedures with independent candidate processing and per-candidate result reporting (`{ succeeded, refused }`). Server-side CSV snapshot procedure (`application.exportCsv`) using direct in-memory string formatting instead of complex streaming to keep the design clean and simple. Built floating bulk toolbar, candidate checkboxes, confirmation modal, per-candidate results modal, and instant browser CSV download.
+- **Session 9: Production Quality Improvements**: Centralized policy authorization layer (`src/lib/policy.ts`), domain pipeline service (`src/lib/pipeline-service.ts`), structured interview feedback model (`ApplicationFeedback`), live candidate email duplicate detector (`checkDuplicateCandidateEmail`), candidate detail workspace page, and business-rule test suite (`src/__tests__/pipeline-policy.test.ts`).
 
 ---
 
@@ -29,6 +31,7 @@ Answer each of these, in your own words.
 4. **UI Architecture & Decluttering fourth**: Applied design tokens, identity dropdowns, and decluttered card views after features were functionally complete.
 5. **Interview Panel & Role Workflows fifth**: Built many-to-many interviewer assignment joins, server authorization checks, and dedicated interviewer dashboard views.
 6. **Candidate Search & Server-Side Filtering sixth**: Built full-text candidate search, multi-field filters, whitelisted sorting, server pagination, and Select label resolution.
+7. **Bulk Actions & Simple CSV Export seventh**: Built partial-success bulk advancement/rejection procedures and direct in-memory CSV generation to keep pipeline export simple without stream pipeline complexity.
 
 ---
 
@@ -41,9 +44,12 @@ Answer each of these, in your own words.
 - **UI Redesign & Decluttering**: Estimated 40 mins; took ~35 mins.
 - **Interview Panel & Security**: Estimated 45 mins; took ~40 mins.
 - **Candidate Search & Pagination**: Estimated 50 mins; took ~60 mins.
+- **Bulk Actions & CSV Export**: Estimated 45 mins; took ~40 mins.
+
 
 ---
 
 ## What did you cut when you ran short?
 
-- Used inline contextual overflow menus (`DropdownMenu`) for secondary actions rather than creating redundant full-page confirmation forms.
+- **Streamed CSV Exports**: Avoided introducing Node.js readable streams or Web Streams API for CSV export. Using direct in-memory string formatting inside the server procedure kept the CSV export simple, deterministic, and fast while avoiding stream pipeline complexity.
+- **Full Dashboard & Audit Timeline (Requirements 8–10)**: Intentionally deferred to keep focus on production-hardening core pipeline features.

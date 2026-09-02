@@ -2,10 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import { z } from "zod";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { trpc } from "@/trpc/client";
+import { AlertTriangle } from "lucide-react";
 
 import {
   Form,
@@ -22,10 +23,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const applicationSchema = z.object({
-  candidateName: z.string().min(2, "Candidate name must be at least 2 characters"),
-  email: z.string().email("Invalid email address"),
-  source: z.string().min(1, "Source is required"),
-  notes: z.string().optional(),
+  candidateName: z.string().min(2, "Candidate name must be at least 2 characters").max(100),
+  email: z.string().email("Invalid email address").max(100),
+  source: z.string().min(1, "Source is required").max(100),
+  notes: z.string().max(2000).optional(),
 });
 
 type ApplicationFormValues = z.infer<typeof applicationSchema>;
@@ -55,12 +56,25 @@ export function ApplicationForm({ jobOpeningId, application }: ApplicationFormPr
     },
   });
 
+  const emailValue = useWatch({ control: form.control, name: "email" });
+
+  const { data: duplicateCheck } = trpc.application.checkDuplicateEmail.useQuery(
+    {
+      email: emailValue,
+      excludeApplicationId: application?.id,
+    },
+    {
+      enabled: !!emailValue && emailValue.includes("@"),
+    },
+  );
+
   const utils = trpc.useUtils();
 
   const createMutation = trpc.application.create.useMutation({
     onSuccess: () => {
       toast.success("Candidate application created successfully.");
       utils.application.getByJobOpeningId.invalidate({ jobOpeningId });
+      utils.application.list.invalidate();
       router.push(`/recruiter/job-openings/${jobOpeningId}`);
       router.refresh();
     },
@@ -73,6 +87,7 @@ export function ApplicationForm({ jobOpeningId, application }: ApplicationFormPr
     onSuccess: () => {
       toast.success("Candidate application updated successfully.");
       utils.application.getByJobOpeningId.invalidate({ jobOpeningId });
+      utils.application.list.invalidate();
       if (application?.id) {
         utils.application.getById.invalidate({ id: application.id });
       }
@@ -147,6 +162,17 @@ export function ApplicationForm({ jobOpeningId, application }: ApplicationFormPr
                 </FormItem>
               )}
             />
+
+            {/* Live Duplicate Warning */}
+            {duplicateCheck?.isDuplicate && (
+              <div className="p-3 rounded-md bg-amber-500/10 border border-amber-500/30 flex items-start gap-2.5 text-xs text-amber-700 dark:text-amber-300">
+                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+                <div>
+                  <span className="font-bold block">Duplicate Email Warning</span>
+                  <p>{duplicateCheck.message}</p>
+                </div>
+              </div>
+            )}
 
             <FormField
               control={form.control}

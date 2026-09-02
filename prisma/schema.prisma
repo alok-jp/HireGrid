@@ -32,6 +32,13 @@ enum ApplicationStage {
   REJECTED
 }
 
+enum Recommendation {
+  STRONG_HIRE
+  HIRE
+  NO_HIRE
+  STRONG_NO_HIRE
+}
+
 model User {
   id            String       @id @default(cuid())
   name          String
@@ -46,6 +53,7 @@ model User {
   accounts              Account[]
   invitations           Invitation[]             @relation("UserInvitations")
   applicationInterviews ApplicationInterviewer[]
+  feedbacks             ApplicationFeedback[]
 
   @@index([email])
   @@map("user")
@@ -146,11 +154,14 @@ model Application {
   jobOpeningId         String
   jobOpening           JobOpening       @relation(fields: [jobOpeningId], references: [id], onDelete: Cascade)
   interviewers         ApplicationInterviewer[]
+  feedbacks            ApplicationFeedback[]
 
   @@index([jobOpeningId])
   @@index([email])
   @@index([stage])
   @@index([createdAt])
+  @@index([updatedAt])
+  @@index([source])
   @@index([jobOpeningId, stage])
   @@map("application")
 }
@@ -168,4 +179,25 @@ model ApplicationInterviewer {
   @@index([applicationId])
   @@index([interviewerId])
   @@map("application_interviewer")
+}
+
+model ApplicationFeedback {
+  id                    String         @id @default(cuid())
+  applicationId         String
+  interviewerId         String
+  recommendation        Recommendation
+  technicalRating       Int            @default(3)
+  communicationRating   Int            @default(3)
+  problemSolvingRating   Int            @default(3)
+  comments              String
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  interviewer User        @relation(fields: [interviewerId], references: [id], onDelete: Cascade)
+
+  @@unique([applicationId, interviewerId])
+  @@index([applicationId])
+  @@index([interviewerId])
+  @@map("application_feedback")
 }
