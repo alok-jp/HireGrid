@@ -1,10 +1,10 @@
 import { TRPCError } from "@trpc/server";
 import { prisma } from "@/lib/prisma";
 import { getNextStage } from "@/lib/application-stage";
-import { ApplicationStage, InterviewStatus } from "@/generated/prisma/enums";
+import { ApplicationStage, InterviewStatus, ApplicationEventType } from "@/generated/prisma/enums";
 import { logAuditEvent } from "@/lib/logger";
 
-export async function advanceApplicationDomain(id: string, userId?: string, userRole?: string) {
+export async function advanceApplicationDomain(id: string, userId: string, userRole?: string) {
   const application = await prisma.application.findUnique({
     where: { id },
   });
@@ -30,17 +30,18 @@ export async function advanceApplicationDomain(id: string, userId?: string, user
     });
   }
 
-  const nextStage = getNextStage(application.stage as ApplicationStage);
+  const oldStage = application.stage as ApplicationStage;
+  const nextStage = getNextStage(oldStage);
 
   if (!nextStage) {
     throw new TRPCError({
       code: "BAD_REQUEST",
-      message: `Cannot advance application directly from ${application.stage}. Applications must move one stage at a time.`,
+      message: `Cannot advance application directly from ${oldStage}. Applications must move one stage at a time.`,
     });
   }
 
   // BUSINESS RULE: INTERVIEW -> OFFER requires at least 1 COMPLETED interview
-  if (application.stage === ApplicationStage.INTERVIEW && nextStage === ApplicationStage.OFFER) {
+  if (oldStage === ApplicationStage.INTERVIEW && nextStage === ApplicationStage.OFFER) {
     const completedCount = await prisma.interview.count({
       where: {
         applicationId: id,
@@ -56,35 +57,39 @@ export async function advanceApplicationDomain(id: string, userId?: string, user
     }
   }
 
-  // ATOMIC CONDITIONAL UPDATE: Guarantees concurrency safety if another user updated stage simultaneously
-  const result = await prisma.application.updateMany({
-    where: {
-      id,
-      stage: application.stage,
-    },
-    data: {
-      stage: nextStage,
-      ...(nextStage === ApplicationStage.HIRED ? { hiredAt: new Date() } : {}),
-    },
-  });
-
-  if (result.count === 0) {
-    logAuditEvent({
-      action: "STAGE_ADVANCE",
-      userId,
-      userRole,
-      entityId: id,
-      status: "FAILURE",
-      errorMessage: "Concurrent update conflict",
+  // TRANSACTIONAL ATOMIC CONDITIONAL UPDATE + EVENT CREATION
+  const updated = await prisma.$transaction(async (tx) => {
+    const result = await tx.application.updateMany({
+      where: {
+        id,
+        stage: oldStage,
+      },
+      data: {
+        stage: nextStage,
+        ...(nextStage === ApplicationStage.HIRED ? { hiredAt: new Date() } : {}),
+      },
     });
-    throw new TRPCError({
-      code: "CONFLICT",
-      message: "This application was modified by another user concurrently. Please refresh.",
-    });
-  }
 
-  const updated = await prisma.application.findUnique({
-    where: { id },
+    if (result.count === 0) {
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: "This application was modified by another user concurrently. Please refresh.",
+      });
+    }
+
+    await tx.applicationEvent.create({
+      data: {
+        applicationId: id,
+        type: ApplicationEventType.STAGE_CHANGED,
+        actorId: userId,
+        oldStage,
+        newStage: nextStage,
+      },
+    });
+
+    return await tx.application.findUnique({
+      where: { id },
+    });
   });
 
   logAuditEvent({
@@ -93,7 +98,7 @@ export async function advanceApplicationDomain(id: string, userId?: string, user
     userRole,
     entityId: id,
     metadata: {
-      oldStage: application.stage,
+      oldStage,
       newStage: nextStage,
     },
   });
@@ -101,7 +106,7 @@ export async function advanceApplicationDomain(id: string, userId?: string, user
   return updated!;
 }
 
-export async function rejectApplicationDomain(id: string, userId?: string, userRole?: string) {
+export async function rejectApplicationDomain(id: string, userId: string, userRole?: string) {
   const application = await prisma.application.findUnique({
     where: { id },
   });
@@ -120,27 +125,41 @@ export async function rejectApplicationDomain(id: string, userId?: string, userR
     });
   }
 
-  // ATOMIC CONDITIONAL UPDATE for concurrency safety
-  const result = await prisma.application.updateMany({
-    where: {
-      id,
-      stage: application.stage,
-    },
-    data: {
-      stage: ApplicationStage.REJECTED,
-      stageBeforeRejection: application.stage,
-    },
-  });
+  const oldStage = application.stage as ApplicationStage;
 
-  if (result.count === 0) {
-    throw new TRPCError({
-      code: "CONFLICT",
-      message: "This application was modified by another user concurrently. Please refresh.",
+  // TRANSACTIONAL ATOMIC CONDITIONAL UPDATE + EVENT CREATION
+  const updated = await prisma.$transaction(async (tx) => {
+    const result = await tx.application.updateMany({
+      where: {
+        id,
+        stage: oldStage,
+      },
+      data: {
+        stage: ApplicationStage.REJECTED,
+        stageBeforeRejection: oldStage,
+      },
     });
-  }
 
-  const updated = await prisma.application.findUnique({
-    where: { id },
+    if (result.count === 0) {
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: "This application was modified by another user concurrently. Please refresh.",
+      });
+    }
+
+    await tx.applicationEvent.create({
+      data: {
+        applicationId: id,
+        type: ApplicationEventType.REJECTED,
+        actorId: userId,
+        oldStage,
+        newStage: ApplicationStage.REJECTED,
+      },
+    });
+
+    return await tx.application.findUnique({
+      where: { id },
+    });
   });
 
   logAuditEvent({
@@ -149,7 +168,7 @@ export async function rejectApplicationDomain(id: string, userId?: string, userR
     userRole,
     entityId: id,
     metadata: {
-      oldStage: application.stage,
+      oldStage,
       newStage: ApplicationStage.REJECTED,
     },
   });
@@ -157,7 +176,7 @@ export async function rejectApplicationDomain(id: string, userId?: string, userR
   return updated!;
 }
 
-export async function reinstateApplicationDomain(id: string, userId?: string, userRole?: string) {
+export async function reinstateApplicationDomain(id: string, userId: string, userRole?: string) {
   const application = await prisma.application.findUnique({
     where: { id },
   });
@@ -179,29 +198,41 @@ export async function reinstateApplicationDomain(id: string, userId?: string, us
     });
   }
 
-  const targetStage = application.stageBeforeRejection;
+  const targetStage = application.stageBeforeRejection as ApplicationStage;
 
-  // ATOMIC CONDITIONAL UPDATE
-  const result = await prisma.application.updateMany({
-    where: {
-      id,
-      stage: ApplicationStage.REJECTED,
-    },
-    data: {
-      stage: targetStage,
-      stageBeforeRejection: null,
-    },
-  });
-
-  if (result.count === 0) {
-    throw new TRPCError({
-      code: "CONFLICT",
-      message: "This application was modified by another user concurrently. Please refresh.",
+  // TRANSACTIONAL ATOMIC CONDITIONAL UPDATE + EVENT CREATION
+  const updated = await prisma.$transaction(async (tx) => {
+    const result = await tx.application.updateMany({
+      where: {
+        id,
+        stage: ApplicationStage.REJECTED,
+      },
+      data: {
+        stage: targetStage,
+        stageBeforeRejection: null,
+      },
     });
-  }
 
-  const updated = await prisma.application.findUnique({
-    where: { id },
+    if (result.count === 0) {
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: "This application was modified by another user concurrently. Please refresh.",
+      });
+    }
+
+    await tx.applicationEvent.create({
+      data: {
+        applicationId: id,
+        type: ApplicationEventType.REINSTATED,
+        actorId: userId,
+        oldStage: ApplicationStage.REJECTED,
+        newStage: targetStage,
+      },
+    });
+
+    return await tx.application.findUnique({
+      where: { id },
+    });
   });
 
   logAuditEvent({

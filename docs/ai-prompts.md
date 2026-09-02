@@ -96,3 +96,13 @@ How do I implement responsive data visualization charts for recruiter metrics li
 
 ### What you got
 Received a implementation pattern using `ResponsiveContainer`, `BarChart` (vertical layout for top open positions), and `LineChart` (monotone trend line with `CartesianGrid` and custom tooltips styled to match the dark slate design system). Grouped weekly application buckets server-side using `date-fns` `startOfWeek` and `subWeeks` in procedure `dashboard.getStats` to send formatted time-series data array directly to the client.
+
+---
+
+## Implementing Immutable Application History & Event Timeline
+
+### Prompt
+How do I implement an append-only application event system and timeline where every candidate creation, stage change (with old and new stage and actor), rejection, reinstatement, interviewer feedback, and interview scheduling activity is recorded server-side transactionally and can never be edited or deleted by users?
+
+### What you got
+Received an architectural pattern to create an `ApplicationEvent` model and `ApplicationEventType` enum in Prisma (`CREATED`, `STAGE_CHANGED`, `REJECTED`, `REINSTATED`, `FEEDBACK_ADDED`, `INTERVIEW_SCHEDULED`, `INTERVIEW_RESCHEDULED`, `INTERVIEW_CANCELLED`). Event creation is executed inside `prisma.$transaction` along with `Application` stage updates in `src/lib/pipeline-service.ts` and tRPC procedures. The backend router exposes `application.getHistory` with strict authorization checks (`canViewApplication`) and deliberately omits any `update` or `delete` procedures. On the frontend, `ApplicationTimeline` queries the history endpoint and renders a vertical activity timeline with event type icons, stage diff badges, actor details, relative timestamps, and evaluation previews.

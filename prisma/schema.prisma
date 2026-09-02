@@ -45,6 +45,17 @@ enum InterviewStatus {
   CANCELLED
 }
 
+enum ApplicationEventType {
+  CREATED
+  STAGE_CHANGED
+  REJECTED
+  REINSTATED
+  FEEDBACK_ADDED
+  INTERVIEW_SCHEDULED
+  INTERVIEW_RESCHEDULED
+  INTERVIEW_CANCELLED
+}
+
 model User {
   id            String       @id @default(cuid())
   name          String
@@ -61,6 +72,7 @@ model User {
   applicationInterviews ApplicationInterviewer[]
   feedbacks             ApplicationFeedback[]
   scheduledInterviews   InterviewInterviewer[]
+  events                ApplicationEvent[]
 
   @@index([email])
   @@map("user")
@@ -164,6 +176,7 @@ model Application {
   interviewers         ApplicationInterviewer[]
   feedbacks            ApplicationFeedback[]
   interviews           Interview[]
+  events               ApplicationEvent[]
 
   @@index([jobOpeningId])
   @@index([email])
@@ -223,6 +236,7 @@ model Interview {
 
   application   Application     @relation(fields: [applicationId], references: [id], onDelete: Cascade)
   interviewers  InterviewInterviewer[]
+  events        ApplicationEvent[]
 
   @@index([applicationId])
   @@index([scheduledAt])
@@ -240,4 +254,24 @@ model InterviewInterviewer {
   @@id([interviewId, interviewerId])
   @@index([interviewerId])
   @@map("interview_interviewer")
+}
+
+model ApplicationEvent {
+  id            String               @id @default(cuid())
+  applicationId String
+  type          ApplicationEventType
+  actorId       String
+  oldStage      ApplicationStage?
+  newStage      ApplicationStage?
+  interviewId   String?
+  metadata      Json?
+  createdAt     DateTime             @default(now())
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  actor       User        @relation(fields: [actorId], references: [id], onDelete: Cascade)
+  interview   Interview?  @relation(fields: [interviewId], references: [id], onDelete: SetNull)
+
+  @@index([applicationId, createdAt])
+  @@index([actorId])
+  @@map("application_event")
 }

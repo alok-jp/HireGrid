@@ -7,6 +7,7 @@ import { ApplicationStageTracker } from "@/features/applications/application-sta
 import { ApplicationActions } from "@/features/applications/application-actions";
 import { InterviewPanel } from "@/features/applications/interview-panel";
 import { InterviewFeedback } from "@/features/applications/interview-feedback";
+import { ApplicationTimeline } from "@/features/applications/application-timeline";
 import { InterviewSection } from "@/features/interviews/interview-section";
 import {
   ArrowLeft,
@@ -175,6 +176,9 @@ export function CandidateDetailWorkspace({
 
       {/* Structured Interview Feedback */}
       <InterviewFeedback applicationId={application.id} />
+
+      {/* Immutable Application Event Timeline */}
+      <ApplicationTimeline applicationId={application.id} />
     </div>
   );
 }

@@ -65,3 +65,9 @@ below, not necessarily the last one; add a **Later reversed:** line to whichever
 - **Chose:** Independent per-candidate bulk evaluation with detailed success/refusal reporting.
 - **Rejected:** Single `updateMany()` database operations or atomic transactions that roll back the entire batch if one candidate fails.
 - **Why:** Selected candidates may be at different pipeline stages. Independent evaluation allows valid pipeline advances to succeed while returning explicit refusal reasons for ineligible candidates (e.g. already HIRED or REJECTED).
+
+## Decision 11
+
+- **Chose:** Append-Only `ApplicationEvent` Table with Transactional Server-Side Writing.
+- **Rejected:** Frontend-driven history submission, mutable history events, or external event streaming.
+- **Why:** HireGrid requires an immutable audit history where nothing can be edited or deleted after the fact. Writing `ApplicationEvent` records inside the same Prisma transaction (`prisma.$transaction`) as state updates guarantees zero history drift, complete server control, and strict compliance with Requirement #9.

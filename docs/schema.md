@@ -172,8 +172,26 @@ Answer each of these, in your own words.
 
 ---
 
+### 11. `application_event`
+
+| Column | Type | Nullable | Default | Constraints |
+|---|---|---|---|---|
+| `id` | Text | No | `cuid()` | PK |
+| `applicationId` | Text | No | — | FK -> `application.id` (CASCADE), Index |
+| `type` | Enum (`ApplicationEventType`) | No | — | `CREATED`, `STAGE_CHANGED`, `REJECTED`, `REINSTATED`, `FEEDBACK_ADDED`, `INTERVIEW_SCHEDULED`, `INTERVIEW_RESCHEDULED`, `INTERVIEW_CANCELLED` |
+| `actorId` | Text | No | — | FK -> `user.id` (CASCADE), Index |
+| `oldStage` | Enum (`ApplicationStage`) | Yes | `null` | Previous stage before event |
+| `newStage` | Enum (`ApplicationStage`) | Yes | `null` | New stage after event |
+| `interviewId` | Text | Yes | `null` | FK -> `interview.id` (SET NULL) |
+| `metadata` | Json | Yes | `null` | Structured payload (eval ratings, comments, dates) |
+| `createdAt` | Timestamp | No | `now()` | Index |
+
+- **Indexes**: `@@index([applicationId, createdAt])`, `@@index([actorId])`.
+
+---
+
 ## Relationships & Constraints
 
-- **One-to-Many**: `JobOpening` -> `Application`, `User` -> `Session`, `User` -> `Account`, `Application` -> `Interview`, `Application` -> `ApplicationFeedback`.
+- **One-to-Many**: `JobOpening` -> `Application`, `User` -> `Session`, `User` -> `Account`, `Application` -> `Interview`, `Application` -> `ApplicationFeedback`, `Application` -> `ApplicationEvent`, `User` -> `ApplicationEvent`.
 - **Many-to-Many**: `Application` <-> `User` (via `ApplicationInterviewer`), `Interview` <-> `User` (via `InterviewInterviewer`).
 - **Database Constraints**: Composite primary keys preventing duplicate panel or interview assignments, unique constraints on `user.email`, `invitation.tokenHash`, and `application_feedback(applicationId, interviewerId)`.

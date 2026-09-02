@@ -2,7 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { recruiterProcedure, protectedProcedure } from "@/trpc/init";
-import { InterviewStatus } from "@/generated/prisma/enums";
+import { InterviewStatus, ApplicationEventType } from "@/generated/prisma/enums";
 import { canViewApplication } from "@/lib/policy";
 import { format } from "date-fns";
 import { logAuditEvent } from "@/lib/logger";
@@ -62,7 +62,6 @@ async function checkDoubleBookingCollision(
       existStart.getTime() + (interview.duration ?? 60) * 60 * 1000,
     );
 
-    // Overlap condition: (existStart < proposedEnd) && (existEnd > proposedStart)
     if (existStart < proposedEnd && existEnd > proposedStart) {
       const conflicting = interview.interviewers.find((i) =>
         uniqueInterviewerIds.includes(i.interviewerId),
@@ -117,40 +116,56 @@ export const interviewRouter = {
         });
       }
 
-      // Check double-booking collisions for panel members
       await checkDoubleBookingCollision(
         uniqueInterviewerIds,
         scheduledDate,
         input.duration,
       );
 
-      const interview = await prisma.interview.create({
-        data: {
-          applicationId: input.applicationId,
-          scheduledAt: scheduledDate,
-          duration: input.duration,
-          status: InterviewStatus.SCHEDULED,
-          interviewers: {
-            createMany: {
-              data: uniqueInterviewerIds.map((interviewerId) => ({
-                interviewerId,
-              })),
+      const interview = await prisma.$transaction(async (tx) => {
+        const inv = await tx.interview.create({
+          data: {
+            applicationId: input.applicationId,
+            scheduledAt: scheduledDate,
+            duration: input.duration,
+            status: InterviewStatus.SCHEDULED,
+            interviewers: {
+              createMany: {
+                data: uniqueInterviewerIds.map((interviewerId) => ({
+                  interviewerId,
+                })),
+              },
             },
           },
-        },
-        include: {
-          interviewers: {
-            include: {
-              interviewer: {
-                select: {
-                  id: true,
-                  name: true,
-                  email: true,
+          include: {
+            interviewers: {
+              include: {
+                interviewer: {
+                  select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                  },
                 },
               },
             },
           },
-        },
+        });
+
+        await tx.applicationEvent.create({
+          data: {
+            applicationId: input.applicationId,
+            type: ApplicationEventType.INTERVIEW_SCHEDULED,
+            actorId: ctx.session.user.id,
+            interviewId: inv.id,
+            metadata: {
+              scheduledAt: scheduledDate.toISOString(),
+              duration: input.duration,
+            },
+          },
+        });
+
+        return inv;
       });
 
       logAuditEvent({
@@ -208,7 +223,6 @@ export const interviewRouter = {
         });
       }
 
-      // Check double-booking collisions excluding current interview
       await checkDoubleBookingCollision(
         uniqueInterviewerIds,
         scheduledDate,
@@ -216,11 +230,12 @@ export const interviewRouter = {
         input.id,
       );
 
-      await prisma.$transaction([
-        prisma.interviewInterviewer.deleteMany({
+      await prisma.$transaction(async (tx) => {
+        await tx.interviewInterviewer.deleteMany({
           where: { interviewId: input.id },
-        }),
-        prisma.interview.update({
+        });
+
+        await tx.interview.update({
           where: { id: input.id },
           data: {
             scheduledAt: scheduledDate,
@@ -233,8 +248,22 @@ export const interviewRouter = {
               },
             },
           },
-        }),
-      ]);
+        });
+
+        await tx.applicationEvent.create({
+          data: {
+            applicationId: existing.applicationId,
+            type: ApplicationEventType.INTERVIEW_RESCHEDULED,
+            actorId: ctx.session.user.id,
+            interviewId: input.id,
+            metadata: {
+              previousScheduledAt: existing.scheduledAt.toISOString(),
+              newScheduledAt: scheduledDate.toISOString(),
+              duration: input.duration,
+            },
+          },
+        });
+      });
 
       const updated = await prisma.interview.findUnique({
         where: { id: input.id },
@@ -282,11 +311,24 @@ export const interviewRouter = {
         });
       }
 
-      const cancelled = await prisma.interview.update({
-        where: { id: input.id },
-        data: {
-          status: InterviewStatus.CANCELLED,
-        },
+      const cancelled = await prisma.$transaction(async (tx) => {
+        const inv = await tx.interview.update({
+          where: { id: input.id },
+          data: {
+            status: InterviewStatus.CANCELLED,
+          },
+        });
+
+        await tx.applicationEvent.create({
+          data: {
+            applicationId: existing.applicationId,
+            type: ApplicationEventType.INTERVIEW_CANCELLED,
+            actorId: ctx.session.user.id,
+            interviewId: input.id,
+          },
+        });
+
+        return inv;
       });
 
       logAuditEvent({
@@ -324,7 +366,6 @@ export const interviewRouter = {
         });
       }
 
-      // Authorization check: User must be RECRUITER / MASTER_ADMIN OR an assigned interviewer
       const isAssignedToInterview = existing.interviewers.some(
         (i) => i.interviewerId === user.id,
       );

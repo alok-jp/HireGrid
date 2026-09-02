@@ -4,6 +4,7 @@ import Link from "next/link";
 import { trpc } from "@/trpc/client";
 import { ApplicationStageTracker } from "@/features/applications/application-stage";
 import { InterviewFeedback } from "@/features/applications/interview-feedback";
+import { ApplicationTimeline } from "@/features/applications/application-timeline";
 import { InterviewSection } from "@/features/interviews/interview-section";
 import {
   ArrowLeft,
@@ -135,6 +136,9 @@ export function InterviewerCandidateWorkspace({
 
       {/* Structured Interview Feedback */}
       <InterviewFeedback applicationId={application.id} />
+
+      {/* Immutable Application Event Timeline */}
+      <ApplicationTimeline applicationId={application.id} />
     </div>
   );
 }
