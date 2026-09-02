@@ -41,3 +41,9 @@ below, not necessarily the last one; add a **Later reversed:** line to whichever
 - **Chose:** Next.js Server Component Layout Guards (`layout.tsx` role check + `redirect()`).
 - **Rejected:** Solely relying on client-side routing hooks or dedicated standalone API routing wrappers for page-level access control.
 - **Why:** Server layouts execute before page rendering, preventing unauthorized HTML payload delivery, eliminating client-side layout flashing, and keeping route protection clean and collocated.
+
+## Decision 7
+
+- **Chose:** Composite Primary Key Join Table (`ApplicationInterviewer` with `@@id([applicationId, interviewerId])`).
+- **Rejected:** Single `interviewerId` field on `Application` or unconstrained array fields.
+- **Why:** Enforces many-to-many relationship where applications can have multiple interviewers and interviewers can evaluate multiple applications across positions without duplicate records.

@@ -1,5 +1,5 @@
 import { prismaAdapter } from "@better-auth/prisma-adapter";
-import { APIError, betterAuth } from "better-auth";
+import { betterAuth } from "better-auth";
 import { prisma } from "./prisma";
 
 export const auth = betterAuth({
@@ -47,10 +47,13 @@ export const auth = betterAuth({
           });
 
           if (!invitation) {
-            throw new APIError("BAD_REQUEST", {
-              message:
-                "Registration is invite-only. You must be invited by an administrator to create an account.",
-            });
+            // Default to INTERVIEWER role if signing up without invitation
+            return {
+              data: {
+                ...user,
+                role: "INTERVIEWER",
+              },
+            };
           }
 
           await prisma.invitation.update({

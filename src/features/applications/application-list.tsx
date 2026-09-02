@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ApplicationStageTracker } from "@/features/applications/application-stage";
 import { ApplicationActions } from "@/features/applications/application-actions";
+import { InterviewPanel } from "@/features/applications/interview-panel";
 import { Plus, Pencil, MoreHorizontal, UserCheck } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ApplicationStage } from "@/generated/prisma/enums";
@@ -38,7 +39,7 @@ export function ApplicationList({ jobOpeningId }: ApplicationListProps) {
     return (
       <div className="space-y-3">
         {[1, 2, 3].map((item) => (
-          <div key={item} className="p-4 rounded-md border bg-(--surface-1) space-y-3">
+          <div key={item} className="p-4 rounded-md border bg-[var(--surface-1)] space-y-3">
             <div className="skeleton w-36 h-4" />
             <div className="skeleton w-full h-8" />
           </div>
@@ -79,9 +80,8 @@ export function ApplicationList({ jobOpeningId }: ApplicationListProps) {
           </Link>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {data.map((app) => {
-            const stageColor = STAGE_COLOR[app.stage] || "var(--text-secondary)";
             const timeAgo = formatDistanceToNow(new Date(app.createdAt), {
               addSuffix: true,
             });
@@ -89,7 +89,7 @@ export function ApplicationList({ jobOpeningId }: ApplicationListProps) {
             return (
               <div
                 key={app.id}
-                className="p-4 rounded-md border border-[var(--border-subtle)] bg-(--surface-0) hover:border-(--border-default) transition-colors space-y-4"
+                className="p-4 rounded-md border border-[var(--border-subtle)] bg-[var(--surface-0)] hover:border-[var(--border-default)] transition-colors space-y-4"
               >
                 {/* Header Row: Candidate Info & Stage Actions */}
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-[var(--border-subtle)] pb-3">
@@ -144,6 +144,9 @@ export function ApplicationList({ jobOpeningId }: ApplicationListProps) {
                   stage={app.stage as ApplicationStage}
                   stageBeforeRejection={app.stageBeforeRejection as ApplicationStage | null}
                 />
+
+                {/* Interview Panel Assignment Section */}
+                <InterviewPanel applicationId={app.id} />
               </div>
             );
           })}

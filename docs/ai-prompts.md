@@ -56,3 +56,5 @@ What is the best way to implement the pipeline structure (APPLIED -> SCREENING -
 
 ### What you got
 Received an architectural plan to define `ApplicationStage` enum in Prisma, add `stageBeforeRejection` field to preserve pre-rejection state, build a centralized transition helper (`getNextStage`), restrict transition endpoints to `recruiterProcedure` middleware, and calculate stage advancement strictly on the server without accepting client stage overrides.
+
+---

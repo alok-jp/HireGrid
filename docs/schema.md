@@ -71,6 +71,13 @@ Answer each of these, in your own words.
 - `jobOpeningId`: String (foreign key -> `job_opening.id`, cascade delete)
 - `createdAt`, `updatedAt`: DateTime
 
+### `application_interviewer` (`ApplicationInterviewer`)
+- `applicationId`: String (foreign key -> `application.id`, cascade delete)
+- `interviewerId`: String (foreign key -> `user.id`, cascade delete)
+- `createdAt`: DateTime
+- Composite Primary Key: `@@id([applicationId, interviewerId])`
+- Indexes: `@@index([applicationId])`, `@@index([interviewerId])`
+
 ---
 
 ## Relationships
@@ -81,21 +88,18 @@ Answer each of these, in your own words.
   - `User` -> `Invitation[]`
   - `JobOpening` -> `Application[]` (Cascade delete when job opening is removed)
 - **Many-to-Many**:
-  - Interview panel assignments (interviewers assigned to applications).
+  - `Application` <-> `User` via `ApplicationInterviewer` join table (interviewers assigned to evaluate candidate applications across positions).
 
 ---
 
 ## Constraints: Database vs. Application Code
 
-- **Database**: Primary keys, foreign key relations, unique constraints (`user.email`, `session.token`, `invitation.tokenHash`), status enums (`Role`, `JobOpeningStatus`, `ApplicationStage`), cascade deletes, and indexes on `job_opening.status`, `job_opening.createdAt`, `application.jobOpeningId`, `application.email`, `application.stage`, and composite `[jobOpeningId, stage]`.
-- **Application Code**: Zod form validation, role authorization middleware (`recruiterProcedure`, `adminProcedure`), and stage transition logic (`getNextStage`).
-- **Why**: Database constraints protect storage integrity, while application code provides instant user feedback.
+- **Database**: Primary keys, composite primary key `@@id([applicationId, interviewerId])`, foreign key relations, unique constraints (`user.email`, `session.token`, `invitation.tokenHash`), status enums (`Role`, `JobOpeningStatus`, `ApplicationStage`), cascade deletes, and indexes on `job_opening.status`, `job_opening.createdAt`, `application.jobOpeningId`, `application.email`, `application.stage`, `application_interviewer.applicationId`, `application_interviewer.interviewerId`, and composite `[jobOpeningId, stage]`.
+- **Application Code**: Zod form validation, role authorization middleware (`recruiterProcedure`, `adminProcedure`), interviewer assignment server checks inside `application.getById`, and stage transition logic (`getNextStage`).
+- **Why**: Database constraints protect storage integrity and prevent duplicate panel assignments, while application code provides instant user feedback and fine-grained authorization.
 
 ---
 
 ## Deliberate Denormalisation
 
 - Stored `role` directly on `user`, `status` directly on `job_opening`, and `stage` directly on `application` as enums instead of join tables, avoiding extra joins on every request.
-
----
-

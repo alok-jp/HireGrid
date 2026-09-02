@@ -42,9 +42,10 @@ model User {
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 
-  sessions      Session[]
-  accounts      Account[]
-  invitations   Invitation[] @relation("UserInvitations")
+  sessions              Session[]
+  accounts              Account[]
+  invitations           Invitation[]             @relation("UserInvitations")
+  applicationInterviews ApplicationInterviewer[]
 
   @@index([email])
   @@map("user")
@@ -144,6 +145,7 @@ model Application {
 
   jobOpeningId         String
   jobOpening           JobOpening       @relation(fields: [jobOpeningId], references: [id], onDelete: Cascade)
+  interviewers         ApplicationInterviewer[]
 
   @@index([jobOpeningId])
   @@index([email])
@@ -151,4 +153,19 @@ model Application {
   @@index([createdAt])
   @@index([jobOpeningId, stage])
   @@map("application")
+}
+
+model ApplicationInterviewer {
+  applicationId String
+  interviewerId String
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  interviewer User        @relation(fields: [interviewerId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@id([applicationId, interviewerId])
+  @@index([applicationId])
+  @@index([interviewerId])
+  @@map("application_interviewer")
 }
