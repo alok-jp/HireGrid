@@ -12,22 +12,13 @@ import {
 import { ApplicationStageTracker } from "@/features/applications/application-stage";
 import { ApplicationActions } from "@/features/applications/application-actions";
 import { InterviewPanel } from "@/features/applications/interview-panel";
-import { Plus, Pencil, MoreHorizontal, UserCheck } from "lucide-react";
+import { Plus, Pencil, MoreHorizontal, UserCheck, ExternalLink } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ApplicationStage } from "@/generated/prisma/enums";
 
 interface ApplicationListProps {
   jobOpeningId: string;
 }
-
-const STAGE_COLOR: Record<string, string> = {
-  APPLIED: "var(--text-tertiary)",
-  SCREENING: "var(--status-pending)",
-  INTERVIEW: "var(--accent)",
-  OFFER: "var(--status-active)",
-  HIRED: "#10b981",
-  REJECTED: "#dc2626",
-};
 
 export function ApplicationList({ jobOpeningId }: ApplicationListProps) {
   const router = useRouter();
@@ -95,9 +86,13 @@ export function ApplicationList({ jobOpeningId }: ApplicationListProps) {
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-[var(--border-subtle)] pb-3">
                   <div className="space-y-0.5">
                     <div className="flex items-center gap-2">
-                      <span className="text-body font-bold text-[var(--text-primary)]">
-                        {app.candidateName}
-                      </span>
+                      <Link
+                        href={`/recruiter/job-openings/${jobOpeningId}/applications/${app.id}`}
+                        className="text-body font-bold text-[var(--text-primary)] hover:text-[var(--accent)] hover:underline inline-flex items-center gap-1 transition-colors"
+                      >
+                        <span>{app.candidateName}</span>
+                        <ExternalLink className="w-3 h-3 text-[var(--text-tertiary)]" />
+                      </Link>
                       <span className="text-meta">· {app.email}</span>
                     </div>
                     <div className="text-meta text-xs">
@@ -123,7 +118,17 @@ export function ApplicationList({ jobOpeningId }: ApplicationListProps) {
                       <DropdownMenuTrigger className="w-7 h-7 flex items-center justify-center rounded-sm text-[var(--text-tertiary)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)] transition-colors outline-none">
                         <MoreHorizontal className="h-4 w-4" />
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-40">
+                      <DropdownMenuContent align="end" className="w-44">
+                        <DropdownMenuItem
+                          onClick={() =>
+                            router.push(
+                              `/recruiter/job-openings/${jobOpeningId}/applications/${app.id}`,
+                            )
+                          }
+                        >
+                          <ExternalLink className="mr-2 h-3.5 w-3.5" />
+                          View Workspace
+                        </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() =>
                             router.push(

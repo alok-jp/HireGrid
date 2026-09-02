@@ -17,8 +17,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { UserPlus, Trash2, Loader2, Users } from "lucide-react";
+import { UserPlus, Trash2, Loader2, Users, Clock } from "lucide-react";
 import { toast } from "sonner";
+import { formatDistanceToNow, format } from "date-fns";
 
 interface InterviewPanelProps {
   applicationId: string;
@@ -113,7 +114,7 @@ export function InterviewPanel({ applicationId }: InterviewPanelProps) {
 
             <div className="space-y-4 py-3">
               <p className="text-xs text-[var(--text-secondary)]">
-                Select an interviewer to evaluate this candidate application. Only users with the INTERVIEWER role can be assigned.
+                Select an interviewer to evaluate this candidate application. All registered team members are available to be assigned.
               </p>
 
               {isLoadingAssignable ? (
@@ -192,21 +193,32 @@ export function InterviewPanel({ applicationId }: InterviewPanelProps) {
         </div>
       ) : (
         <div className="space-y-2">
-          {panel.map((interviewer) => (
+          {panel.map((interviewer: any) => (
             <div
               key={interviewer.id}
-              className="flex items-center justify-between p-2 rounded-sm bg-[var(--surface-0)] border border-[var(--border-subtle)]"
+              className="flex items-center justify-between p-2.5 rounded-sm bg-[var(--surface-0)] border border-[var(--border-subtle)]"
             >
               <div className="flex items-center gap-2.5">
-                <div className="w-6 h-6 rounded-full bg-[var(--accent-soft)] text-[var(--accent)] flex items-center justify-center text-xs font-bold">
+                <div className="w-7 h-7 rounded-full bg-[var(--accent-soft)] text-[var(--accent)] flex items-center justify-center text-xs font-bold shrink-0">
                   {interviewer.name.charAt(0).toUpperCase()}
                 </div>
                 <div>
                   <div className="text-xs font-semibold text-[var(--text-primary)]">
                     {interviewer.name}
                   </div>
-                  <div className="text-[11px] text-[var(--text-tertiary)]">
-                    {interviewer.email}
+                  <div className="text-[11px] text-[var(--text-tertiary)] flex items-center gap-2 mt-0.5">
+                    <span>{interviewer.email}</span>
+                    {interviewer.assignedAt && (
+                      <>
+                        <span>•</span>
+                        <div className="flex items-center gap-1 text-[var(--text-secondary)] font-medium">
+                          <Clock className="w-3 h-3 text-[var(--accent)]" />
+                          <span title={format(new Date(interviewer.assignedAt), "PPpp")}>
+                            Assigned {formatDistanceToNow(new Date(interviewer.assignedAt), { addSuffix: true })}
+                          </span>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>

@@ -102,11 +102,12 @@ Answer each of these, in your own words.
 | `notes` | Text | Yes | `null` | — |
 | `stage` | Enum (`ApplicationStage`) | No | `APPLIED` | Index |
 | `stageBeforeRejection` | Enum (`ApplicationStage`) | Yes | `null` | — |
+| `hiredAt` | Timestamp | Yes | `null` | Index |
 | `jobOpeningId` | Text | No | — | FK -> `job_opening.id` (CASCADE), Index |
 | `createdAt` | Timestamp | No | `now()` | Index |
 | `updatedAt` | Timestamp | No | — | Index |
 
-- **Indexes**: `@@index([jobOpeningId])`, `@@index([email])`, `@@index([stage])`, `@@index([source])`, `@@index([createdAt])`, `@@index([updatedAt])`, `@@index([jobOpeningId, stage])`.
+- **Indexes**: `@@index([jobOpeningId])`, `@@index([email])`, `@@index([stage])`, `@@index([hiredAt])`, `@@index([source])`, `@@index([createdAt])`, `@@index([updatedAt])`, `@@index([jobOpeningId, stage])`.
 
 ---
 
@@ -140,3 +141,39 @@ Answer each of these, in your own words.
 
 - **Unique Constraint**: `@@unique([applicationId, interviewerId])`.
 - **Indexes**: `@@index([applicationId])`, `@@index([interviewerId])`.
+
+---
+
+### 9. `interview`
+
+| Column | Type | Nullable | Default | Constraints |
+|---|---|---|---|---|
+| `id` | Text | No | `cuid()` | PK |
+| `applicationId` | Text | No | — | FK -> `application.id` (CASCADE) |
+| `scheduledAt` | Timestamp | No | — | Index |
+| `duration` | Int | Yes | `60` | Duration in minutes |
+| `status` | Enum (`InterviewStatus`) | No | `SCHEDULED` | `SCHEDULED`, `COMPLETED`, `CANCELLED`, Index |
+| `createdAt` | Timestamp | No | `now()` | — |
+| `updatedAt` | Timestamp | No | — | — |
+
+- **Indexes**: `@@index([applicationId])`, `@@index([scheduledAt])`, `@@index([status])`.
+
+---
+
+### 10. `interview_interviewer`
+
+| Column | Type | Nullable | Default | Constraints |
+|---|---|---|---|---|
+| `interviewId` | Text | No | — | FK -> `interview.id` (CASCADE), PK |
+| `interviewerId` | Text | No | — | FK -> `user.id` (CASCADE), PK |
+
+- **Primary Key**: `@@id([interviewId, interviewerId])` composite key.
+- **Indexes**: `@@index([interviewerId])`.
+
+---
+
+## Relationships & Constraints
+
+- **One-to-Many**: `JobOpening` -> `Application`, `User` -> `Session`, `User` -> `Account`, `Application` -> `Interview`, `Application` -> `ApplicationFeedback`.
+- **Many-to-Many**: `Application` <-> `User` (via `ApplicationInterviewer`), `Interview` <-> `User` (via `InterviewInterviewer`).
+- **Database Constraints**: Composite primary keys preventing duplicate panel or interview assignments, unique constraints on `user.email`, `invitation.tokenHash`, and `application_feedback(applicationId, interviewerId)`.

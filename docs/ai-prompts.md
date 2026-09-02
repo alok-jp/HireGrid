@@ -78,3 +78,21 @@ How should I generate a CSV snapshot of open job position candidates server-side
 Received an implementation pattern to create a server helper function `generateApplicationsCsv(applications)` in `src/lib/csv-exporter.ts` that iterates over fetched Prisma database records, formats columns (`Candidate Name`, `Email`, `Job Opening`, `Department`, `Stage`, `Source`, `Applied Date`, `Last Updated`), and escapes special characters (`"`, `,`, `\n`) into a single CSV string. The server procedure `application.exportCsv` queries active open job openings, applies viewer authorization limits, and returns `{ filename, csvContent, count }`. On the client, `CandidateSearchList` triggers the procedure refetch and uses `URL.createObjectURL(new Blob([csvContent]))` to initiate instant browser download without requiring streaming middleware.
 
 ---
+
+## Implementing Server-Side Pagination, Filtering & Searching
+
+### Prompt
+How should I implement server-side pagination, searching, filtering, and sorting for candidates in Next.js + tRPC + Prisma + PostgreSQL without loading all rows into React memory?
+
+### What you got
+Got a pattern to create procedure `application.list` accepting `search`, `jobOpeningId`, `stage`, `source`, `sortBy`, `sortOrder`, `page`, and `pageSize`. The procedure builds Prisma `where` filter conditions (searching case-insensitively over `candidateName` or `email`), applies authorization boundaries (restricting interviewers to assigned candidates), and runs a `prisma.$transaction([ findMany({ skip, take }), count() ])` returning paginated items and pagination metadata (`page`, `pageSize`, `total`, `totalPages`). On the frontend, `CandidateSearchList` manages debounced search state (300ms), dropdown filters, and server pagination controls.
+
+---
+
+## Visualizing Dashboard Analytics with Recharts Data Charts
+
+### Prompt
+How do I implement responsive data visualization charts for recruiter metrics like job position candidate counts, stage distributions, and rolling 12-week quarterly application volume trends using Recharts in Next.js?
+
+### What you got
+Received a implementation pattern using `ResponsiveContainer`, `BarChart` (vertical layout for top open positions), and `LineChart` (monotone trend line with `CartesianGrid` and custom tooltips styled to match the dark slate design system). Grouped weekly application buckets server-side using `date-fns` `startOfWeek` and `subWeeks` in procedure `dashboard.getStats` to send formatted time-series data array directly to the client.

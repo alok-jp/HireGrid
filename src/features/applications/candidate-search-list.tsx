@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { trpc } from "@/trpc/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -24,26 +25,27 @@ import { ApplicationActions } from "@/features/applications/application-actions"
 import { InterviewPanel } from "@/features/applications/interview-panel";
 import {
   Search,
-  RotateCcw,
-  ChevronLeft,
-  ChevronRight,
-  ArrowUpDown,
-  UserCheck,
-  Building2,
-  Calendar,
-  Briefcase,
-  Loader2,
   Download,
-  CheckCircle2,
-  XCircle,
+  RotateCcw,
+  ArrowUpDown,
+  Square,
+  CheckSquare,
   Zap,
   UserX,
-  CheckSquare,
-  Square,
+  Loader2,
+  UserCheck,
+  CheckCircle2,
+  XCircle,
+  ChevronLeft,
+  ChevronRight,
+  Briefcase,
+  Building2,
+  Calendar,
+  ExternalLink,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import { ApplicationStage } from "@/generated/prisma/enums";
 import { toast } from "sonner";
+import { ApplicationStage } from "@/generated/prisma/enums";
 
 const STAGE_LABELS: Record<string, string> = {
   ALL: "All Stages",
@@ -61,55 +63,40 @@ const SORT_LABELS: Record<string, string> = {
   updatedAt: "Last Updated",
 };
 
-interface BulkResultItem {
-  applicationId: string;
-  candidateName: string;
-  oldStage?: string;
-  newStage?: string;
-  reason?: string;
-}
-
-interface BulkActionResult {
-  actionName: string;
-  succeeded: BulkResultItem[];
-  refused: BulkResultItem[];
-}
-
 export function CandidateSearchList() {
   const utils = trpc.useUtils();
 
-  // Local state for debounced search
+  // State: Search & Filters
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-
-  // Filter & Sort State
   const [jobOpeningId, setJobOpeningId] = useState<string>("ALL");
   const [stage, setStage] = useState<string>("ALL");
   const [source, setSource] = useState<string>("ALL");
   const [sortBy, setSortBy] = useState<"createdAt" | "stage" | "updatedAt">("createdAt");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState<number>(1);
-  const pageSize = 15;
+  const pageSize = 20;
 
-  // Bulk Selection State
+  // State: Bulk Selection & Actions
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [confirmRejectOpen, setConfirmRejectOpen] = useState(false);
+  const [bulkResult, setBulkResult] = useState<{
+    actionName: string;
+    succeeded: Array<{ applicationId: string; candidateName: string; oldStage: string; newStage: string }>;
+    refused: Array<{ applicationId: string; candidateName: string; reason: string }>;
+  } | null>(null);
+
   const [isExporting, setIsExporting] = useState(false);
 
-  // Bulk Action Results Modal State
-  const [bulkResult, setBulkResult] = useState<BulkActionResult | null>(null);
-
-  // Debounce search input (300ms)
+  // Debounce search input by 300ms
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchInput.trim());
-      setPage(1); // Reset to page 1 on search change
-      setSelectedIds([]);
+      setPage(1);
     }, 300);
     return () => clearTimeout(timer);
   }, [searchInput]);
 
-  // Reset page to 1 whenever any filter or sort option changes
   const handleJobOpeningChange = (val: string | null) => {
     setJobOpeningId(val ?? "ALL");
     setPage(1);
@@ -132,14 +119,12 @@ export function CandidateSearchList() {
     if (val === "createdAt" || val === "stage" || val === "updatedAt") {
       setSortBy(val);
       setPage(1);
-      setSelectedIds([]);
     }
   };
 
   const toggleSortOrder = () => {
     setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
     setPage(1);
-    setSelectedIds([]);
   };
 
   const handleResetFilters = () => {
@@ -594,9 +579,13 @@ export function CandidateSearchList() {
 
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
-                          <span className="text-title text-[var(--text-primary)]">
-                            {app.candidateName}
-                          </span>
+                          <Link
+                            href={`/recruiter/job-openings/${app.jobOpeningId}/applications/${app.id}`}
+                            className="text-title text-[var(--text-primary)] hover:text-[var(--accent)] hover:underline inline-flex items-center gap-1 transition-colors"
+                          >
+                            <span>{app.candidateName}</span>
+                            <ExternalLink className="w-3 h-3 text-[var(--text-tertiary)]" />
+                          </Link>
                           <span className="text-meta">· {app.email}</span>
                         </div>
 

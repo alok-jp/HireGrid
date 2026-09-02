@@ -501,11 +501,14 @@ export const applicationRouter = {
     }
 
     const interviewers = await prisma.user.findMany({
-      where: { role: "INTERVIEWER" },
+      where: {
+        role: "INTERVIEWER",
+      },
       select: {
         id: true,
         name: true,
         email: true,
+        role: true,
       },
       orderBy: { name: "asc" },
     });
@@ -548,7 +551,7 @@ export const applicationRouter = {
       if (targetUser.role !== "INTERVIEWER") {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "Only users with the INTERVIEWER role can be assigned to an application.",
+          message: "Only users with the INTERVIEWER role can be assigned to an application panel.",
         });
       }
 
@@ -631,13 +634,17 @@ export const applicationRouter = {
               id: true,
               name: true,
               email: true,
+              role: true,
             },
           },
         },
         orderBy: { createdAt: "asc" },
       });
 
-      return assignments.map((a) => a.interviewer);
+      return assignments.map((a) => ({
+        ...a.interviewer,
+        assignedAt: a.createdAt,
+      }));
     }),
 
   myAssigned: protectedProcedure.query(async ({ ctx }) => {

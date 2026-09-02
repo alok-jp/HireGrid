@@ -13,7 +13,8 @@ export default async function InterviewerLayout({
     redirect("/login");
   }
 
-  if (session.user.role !== "INTERVIEWER") {
+  // Allow INTERVIEWER and MASTER_ADMIN roles
+  if (session.user.role !== "INTERVIEWER" && session.user.role !== "MASTER_ADMIN") {
     redirect("/");
   }
 

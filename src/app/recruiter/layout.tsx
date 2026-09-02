@@ -13,8 +13,8 @@ export default async function RecruiterLayout({
     redirect("/login");
   }
 
-  // Strict role enforcement: Only RECRUITER can access recruiter dashboard and features
-  if (session.user.role !== "RECRUITER") {
+  // Allow RECRUITER and MASTER_ADMIN roles
+  if (session.user.role !== "RECRUITER" && session.user.role !== "MASTER_ADMIN") {
     redirect("/");
   }
 

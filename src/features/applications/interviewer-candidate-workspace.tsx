@@ -2,10 +2,7 @@
 
 import Link from "next/link";
 import { trpc } from "@/trpc/client";
-import { Button } from "@/components/ui/button";
 import { ApplicationStageTracker } from "@/features/applications/application-stage";
-import { ApplicationActions } from "@/features/applications/application-actions";
-import { InterviewPanel } from "@/features/applications/interview-panel";
 import { InterviewFeedback } from "@/features/applications/interview-feedback";
 import { InterviewSection } from "@/features/interviews/interview-section";
 import {
@@ -13,34 +10,23 @@ import {
   Briefcase,
   Building2,
   Calendar,
-  Edit,
   Mail,
-  AlertTriangle,
   FileText,
+  UserCheck,
 } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { ApplicationStage } from "@/generated/prisma/enums";
 
-interface CandidateDetailWorkspaceProps {
+interface InterviewerCandidateWorkspaceProps {
   applicationId: string;
 }
 
-export function CandidateDetailWorkspace({
+export function InterviewerCandidateWorkspace({
   applicationId,
-}: CandidateDetailWorkspaceProps) {
+}: InterviewerCandidateWorkspaceProps) {
   const { data: application, isLoading } = trpc.application.getById.useQuery({
     id: applicationId,
   });
-
-  const { data: duplicateCheck } = trpc.application.checkDuplicateEmail.useQuery(
-    {
-      email: application?.email ?? "",
-      excludeApplicationId: applicationId,
-    },
-    {
-      enabled: !!application?.email,
-    },
-  );
 
   if (isLoading) {
     return (
@@ -55,7 +41,10 @@ export function CandidateDetailWorkspace({
   if (!application) {
     return (
       <div className="py-12 text-center">
-        <p className="text-body font-semibold">Candidate application not found</p>
+        <p className="text-body font-semibold">Candidate application not found or not assigned to you.</p>
+        <Link href="/interviewer" className="text-xs text-[var(--accent)] hover:underline mt-2 inline-block">
+          Return to My Assigned Applications
+        </Link>
       </div>
     );
   }
@@ -67,47 +56,21 @@ export function CandidateDetailWorkspace({
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto py-6 px-4">
-      {/* Top Breadcrumb Navigation */}
+      {/* Top Navigation */}
       <div className="flex items-center justify-between">
         <Link
-          href={`/recruiter/job-openings/${application.jobOpeningId}`}
+          href="/interviewer"
           className="inline-flex items-center gap-1.5 text-xs text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors font-medium"
         >
           <ArrowLeft className="w-4 h-4" />
-          Back to {application.jobOpening.title}
+          Back to My Assigned Applications
         </Link>
 
-        <div className="flex items-center gap-2">
-          <Link
-            href={`/recruiter/job-openings/${application.jobOpeningId}/applications/${application.id}/edit`}
-          >
-            <Button size="sm" variant="outline" className="text-xs gap-1.5 h-8">
-              <Edit className="w-3.5 h-3.5" />
-              Edit Application
-            </Button>
-          </Link>
-          <ApplicationActions
-            application={{
-              id: application.id,
-              stage: application.stage as ApplicationStage,
-              stageBeforeRejection: application.stageBeforeRejection as ApplicationStage | null,
-            }}
-          />
-        </div>
+        <span className="px-2.5 py-1 rounded-sm bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/30 text-xs font-bold flex items-center gap-1">
+          <UserCheck className="w-3.5 h-3.5" />
+          <span>Interviewer Evaluation Portal</span>
+        </span>
       </div>
-
-      {/* Duplicate Candidate Warning Banner if duplicate exists */}
-      {duplicateCheck?.isDuplicate && (
-        <div className="p-3.5 rounded-md bg-amber-500/10 border border-amber-500/30 flex items-start gap-3 text-xs text-amber-700 dark:text-amber-300">
-          <AlertTriangle className="w-5 h-5 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
-          <div className="space-y-1">
-            <span className="font-bold uppercase tracking-wider block text-[11px]">
-              Duplicate Candidate Detected
-            </span>
-            <p>{duplicateCheck.message}</p>
-          </div>
-        </div>
-      )}
 
       {/* Main Candidate Card */}
       <div className="p-6 rounded-md border border-[var(--border-subtle)] bg-[var(--surface-0)] space-y-6 shadow-xs">
@@ -147,7 +110,7 @@ export function CandidateDetailWorkspace({
           <div className="space-y-1 bg-[var(--surface-1)] p-4 rounded-md border border-[var(--border-subtle)]">
             <span className="text-[11px] font-bold text-[var(--text-tertiary)] uppercase tracking-wider flex items-center gap-1.5">
               <FileText className="w-3.5 h-3.5 text-[var(--accent)]" />
-              Recruiter Notes & Information
+              Recruiter Notes & Candidate Details
             </span>
             <p className="text-xs text-[var(--text-secondary)] whitespace-pre-line leading-relaxed pt-1">
               {application.notes}
@@ -167,11 +130,8 @@ export function CandidateDetailWorkspace({
         </div>
       </div>
 
-      {/* Scheduled Interviews Section */}
-      <InterviewSection applicationId={application.id} />
-
-      {/* Recruiter Interview Panel Assignment */}
-      <InterviewPanel applicationId={application.id} />
+      {/* Scheduled Interviews Section with Mark Completed */}
+      <InterviewSection applicationId={application.id} isRecruiter={false} />
 
       {/* Structured Interview Feedback */}
       <InterviewFeedback applicationId={application.id} />

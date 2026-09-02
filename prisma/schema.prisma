@@ -39,6 +39,12 @@ enum Recommendation {
   STRONG_NO_HIRE
 }
 
+enum InterviewStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
 model User {
   id            String       @id @default(cuid())
   name          String
@@ -54,6 +60,7 @@ model User {
   invitations           Invitation[]             @relation("UserInvitations")
   applicationInterviews ApplicationInterviewer[]
   feedbacks             ApplicationFeedback[]
+  scheduledInterviews   InterviewInterviewer[]
 
   @@index([email])
   @@map("user")
@@ -148,6 +155,7 @@ model Application {
   notes                String?
   stage                ApplicationStage @default(APPLIED)
   stageBeforeRejection ApplicationStage?
+  hiredAt              DateTime?
   createdAt            DateTime         @default(now())
   updatedAt            DateTime         @updatedAt
 
@@ -155,10 +163,12 @@ model Application {
   jobOpening           JobOpening       @relation(fields: [jobOpeningId], references: [id], onDelete: Cascade)
   interviewers         ApplicationInterviewer[]
   feedbacks            ApplicationFeedback[]
+  interviews           Interview[]
 
   @@index([jobOpeningId])
   @@index([email])
   @@index([stage])
+  @@index([hiredAt])
   @@index([createdAt])
   @@index([updatedAt])
   @@index([source])
@@ -200,4 +210,34 @@ model ApplicationFeedback {
   @@index([applicationId])
   @@index([interviewerId])
   @@map("application_feedback")
+}
+
+model Interview {
+  id            String          @id @default(cuid())
+  applicationId String
+  scheduledAt   DateTime
+  duration      Int?            @default(60)
+  status        InterviewStatus @default(SCHEDULED)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  application   Application     @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  interviewers  InterviewInterviewer[]
+
+  @@index([applicationId])
+  @@index([scheduledAt])
+  @@index([status])
+  @@map("interview")
+}
+
+model InterviewInterviewer {
+  interviewId   String
+  interviewerId String
+
+  interview   Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+  interviewer User      @relation(fields: [interviewerId], references: [id], onDelete: Cascade)
+
+  @@id([interviewId, interviewerId])
+  @@index([interviewerId])
+  @@map("interview_interviewer")
 }

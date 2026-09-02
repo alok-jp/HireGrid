@@ -20,6 +20,8 @@ Answer each of these, in your own words.
 - **Session 7: Candidate Search, Filtering & Pagination**: `application.list` & `application.getSources` server procedures, `CandidateSearchList` client component, debounced search, position/stage/source filters, whitelisted sorting, server pagination, and Select label display resolution.
 - **Session 8: Bulk Candidate Actions & Simple CSV Export**: `application.bulkAdvance` and `application.bulkReject` procedures with independent candidate processing and per-candidate result reporting (`{ succeeded, refused }`). Server-side CSV snapshot procedure (`application.exportCsv`) using direct in-memory string formatting instead of complex streaming to keep the design clean and simple. Built floating bulk toolbar, candidate checkboxes, confirmation modal, per-candidate results modal, and instant browser CSV download.
 - **Session 9: Production Quality Improvements**: Centralized policy authorization layer (`src/lib/policy.ts`), domain pipeline service (`src/lib/pipeline-service.ts`), structured interview feedback model (`ApplicationFeedback`), live candidate email duplicate detector (`checkDuplicateCandidateEmail`), candidate detail workspace page, and business-rule test suite (`src/__tests__/pipeline-policy.test.ts`).
+- **Session 10: Interview Scheduling & Recruiter Dashboard**: Created `Interview` & `InterviewInterviewer` models, server-side double-booking collision algorithm (`checkDoubleBookingCollision`), scheduled interview widget, scheduling/rescheduling dialog, `dashboard.getStats` aggregator procedure, and responsive Recharts visualization widgets (`DashboardMetrics`).
+- **Session 11: Concurrency Safety & Audit Logging**: Implemented atomic conditional SQL stage updates (`UPDATE application SET stage = nextStage WHERE id = X AND stage = CURRENT_STAGE`), structured audit logger (`src/lib/logger.ts`), mandatory completed interview check for `INTERVIEW → OFFER`, interviewer candidate evaluation route `/interviewer/applications/[applicationId]`, automated k6 load test summary reports, and 37-test automated verification suite.
 
 ---
 
@@ -32,6 +34,8 @@ Answer each of these, in your own words.
 5. **Interview Panel & Role Workflows fifth**: Built many-to-many interviewer assignment joins, server authorization checks, and dedicated interviewer dashboard views.
 6. **Candidate Search & Server-Side Filtering sixth**: Built full-text candidate search, multi-field filters, whitelisted sorting, server pagination, and Select label resolution.
 7. **Bulk Actions & Simple CSV Export seventh**: Built partial-success bulk advancement/rejection procedures and direct in-memory CSV generation to keep pipeline export simple without stream pipeline complexity.
+8. **Interview Scheduling & Dashboard eighth**: Built time-slotted interview scheduling with double-booking collision protection and recruiter metrics dashboard with Recharts visualizations.
+9. **Concurrency Safety & Audit Logging ninth**: Hardened mutations with atomic conditional SQL updates and structured audit event logging.
 
 ---
 
@@ -45,11 +49,12 @@ Answer each of these, in your own words.
 - **Interview Panel & Security**: Estimated 45 mins; took ~40 mins.
 - **Candidate Search & Pagination**: Estimated 50 mins; took ~60 mins.
 - **Bulk Actions & CSV Export**: Estimated 45 mins; took ~40 mins.
-
+- **Interview Scheduling & Dashboard**: Estimated 60 mins; took ~55 mins.
+- **Concurrency & Audit Hardening**: Estimated 45 mins; took ~40 mins.
 
 ---
 
 ## What did you cut when you ran short?
 
 - **Streamed CSV Exports**: Avoided introducing Node.js readable streams or Web Streams API for CSV export. Using direct in-memory string formatting inside the server procedure kept the CSV export simple, deterministic, and fast while avoiding stream pipeline complexity.
-- **Full Dashboard & Audit Timeline (Requirements 8–10)**: Intentionally deferred to keep focus on production-hardening core pipeline features.
+- **Immutable Audit History Timeline & Stalled Alerts (Requirements 9 & 10)**: Intentionally deferred per explicit project scope constraints.

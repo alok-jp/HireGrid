@@ -1,10 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { trpc } from "@/trpc/client";
 import { ApplicationStageTracker } from "@/features/applications/application-stage";
 import { ApplicationStage } from "@/generated/prisma/enums";
-import { Building2, UserCheck, Calendar, Briefcase } from "lucide-react";
+import { Building2, UserCheck, Calendar, Briefcase, ArrowRight, MessageSquareCode } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { Button } from "@/components/ui/button";
 
 export function InterviewerApplicationList() {
   const { data: applications, isLoading } = trpc.application.myAssigned.useQuery();
@@ -59,9 +61,12 @@ export function InterviewerApplicationList() {
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-[var(--border-subtle)] pb-3">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-title text-[var(--text-primary)]">
+                    <Link
+                      href={`/interviewer/applications/${app.id}`}
+                      className="text-title text-[var(--text-primary)] hover:text-[var(--accent)] hover:underline transition-colors"
+                    >
                       {app.candidateName}
-                    </span>
+                    </Link>
                     <span className="text-meta">· {app.email}</span>
                   </div>
 
@@ -83,10 +88,14 @@ export function InterviewerApplicationList() {
                   </div>
                 </div>
 
-                <div className="text-xs text-right">
-                  <span className="px-2 py-1 rounded-sm bg-[var(--surface-2)] font-semibold text-[var(--text-secondary)]">
-                    Source: {app.source}
-                  </span>
+                <div className="flex items-center gap-2">
+                  <Link href={`/interviewer/applications/${app.id}`}>
+                    <Button size="sm" variant="outline" className="text-xs gap-1.5 h-8">
+                      <MessageSquareCode className="w-3.5 h-3.5 text-[var(--accent)]" />
+                      <span>Evaluate & Submit Feedback</span>
+                      <ArrowRight className="w-3 h-3 ml-1" />
+                    </Button>
+                  </Link>
                 </div>
               </div>
 
