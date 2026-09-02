@@ -60,3 +60,16 @@ Here is what happens when a recruiter assigns an interviewer to an application p
 - **Public Applicant Careers Portal**: Candidate applications are added directly by recruiters inside job openings as specified by core workflow rules.
 - **Resend Email Service**: Decided against using Resend because domain verification was taking too much time; opted for generic SMTP via Nodemailer instead.
 - **Client-Only Permission Guards**: Avoided relying on client-side routing checks for application access; enforced interviewer assignment validation strictly on the server inside `application.getById`.
+
+---
+
+## Candidate Search & Server-Side Pagination Lifecycle
+
+Here is what happens when a user searches or filters candidates:
+
+1. Recruiter enters a search query or selects a filter (Position, Stage, Source, or Sort) on `/recruiter/candidates`.
+2. `CandidateSearchList` debounces search input (300ms) and resets the current page state to 1.
+3. Client invokes `trpc.application.list.useQuery({ search, jobOpeningId, stage, source, sortBy, sortOrder, page, pageSize })`.
+4. Server evaluates `protectedProcedure` session role. If `INTERVIEWER`, Prisma adds `where.interviewers = { some: { interviewerId: ctx.session.user.id } }`.
+5. Server executes `prisma.$transaction([findMany(...), count(...)])` with identical `where` conditions, returning the requested page slice and total matching count.
+6. Client renders matching candidate cards and updates pagination page controls (`Page X of Y`).

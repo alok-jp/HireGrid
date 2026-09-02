@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { recruiterProcedure, protectedProcedure } from "@/trpc/init";
 import { getNextStage } from "@/lib/application-stage";
 import { ApplicationStage } from "@/generated/prisma/enums";
+import type { Prisma } from "@/generated/prisma/client";
 
 const createApplicationSchema = z.object({
   jobOpeningId: z.string().min(1, "Job opening ID is required"),
@@ -29,6 +30,19 @@ const assignInterviewerSchema = z.object({
 const removeInterviewerSchema = z.object({
   applicationId: z.string().min(1, "Application ID is required"),
   interviewerId: z.string().min(1, "Interviewer ID is required"),
+});
+
+const listApplicationsSchema = z.object({
+  search: z.string().trim().optional(),
+  jobOpeningId: z.string().optional(),
+  stage: z
+    .enum(["APPLIED", "SCREENING", "INTERVIEW", "OFFER", "HIRED", "REJECTED"])
+    .optional(),
+  source: z.string().optional(),
+  sortBy: z.enum(["createdAt", "stage", "updatedAt"]).default("createdAt"),
+  sortOrder: z.enum(["asc", "desc"]).default("desc"),
+  page: z.number().int().positive().default(1),
+  pageSize: z.number().int().positive().max(100).default(20),
 });
 
 export const applicationRouter = {
@@ -319,6 +333,137 @@ export const applicationRouter = {
 
     return applications;
   }),
+
+  getSources: protectedProcedure.query(async ({ ctx }) => {
+    const user = ctx.session.user;
+    const where: Prisma.ApplicationWhereInput = {};
+
+    if (user.role === "INTERVIEWER") {
+      where.interviewers = {
+        some: {
+          interviewerId: user.id,
+        },
+      };
+    }
+
+    const result = await prisma.application.findMany({
+      where,
+      distinct: ["source"],
+      select: {
+        source: true,
+      },
+      orderBy: {
+        source: "asc",
+      },
+    });
+
+    return result.map((r) => r.source).filter(Boolean);
+  }),
+
+  list: protectedProcedure
+    .input(listApplicationsSchema)
+    .query(async ({ input, ctx }) => {
+      const user = ctx.session.user;
+      const where: Prisma.ApplicationWhereInput = {};
+
+      // Viewer Scope: Interviewers can ONLY query assigned applications
+      if (user.role === "INTERVIEWER") {
+        where.interviewers = {
+          some: {
+            interviewerId: user.id,
+          },
+        };
+      }
+
+      // Filter by Job Opening
+      if (input.jobOpeningId) {
+        where.jobOpeningId = input.jobOpeningId;
+      }
+
+      // Filter by Stage
+      if (input.stage) {
+        where.stage = input.stage as ApplicationStage;
+      }
+
+      // Filter by Source
+      if (input.source) {
+        where.source = input.source;
+      }
+
+      // Search over candidateName OR email (case-insensitive)
+      if (input.search && input.search.length > 0) {
+        where.AND = [
+          {
+            OR: [
+              {
+                candidateName: {
+                  contains: input.search,
+                  mode: "insensitive",
+                },
+              },
+              {
+                email: {
+                  contains: input.search,
+                  mode: "insensitive",
+                },
+              },
+            ],
+          },
+        ];
+      }
+
+      // Whitelisted Sorting
+      const orderBy: Prisma.ApplicationOrderByWithRelationInput = {
+        [input.sortBy]: input.sortOrder,
+      };
+
+      // Server Pagination
+      const skip = (input.page - 1) * input.pageSize;
+      const take = input.pageSize;
+
+      const [items, total] = await prisma.$transaction([
+        prisma.application.findMany({
+          where,
+          orderBy,
+          skip,
+          take,
+          include: {
+            jobOpening: {
+              select: {
+                id: true,
+                title: true,
+                department: true,
+                status: true,
+              },
+            },
+            interviewers: {
+              include: {
+                interviewer: {
+                  select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                  },
+                },
+              },
+            },
+          },
+        }),
+        prisma.application.count({
+          where,
+        }),
+      ]);
+
+      return {
+        items,
+        pagination: {
+          page: input.page,
+          pageSize: input.pageSize,
+          total,
+          totalPages: Math.ceil(total / input.pageSize) || 1,
+        },
+      };
+    }),
 
   getByJobOpeningId: recruiterProcedure
     .input(

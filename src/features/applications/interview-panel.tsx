@@ -36,12 +36,24 @@ export function InterviewPanel({ applicationId }: InterviewPanelProps) {
   const { data: assignable, isLoading: isLoadingAssignable } =
     trpc.user.getInterviewers.useQuery(undefined, { enabled: open });
 
+  const selectedInterviewer = assignable?.find((u) => u.id === selectedInterviewerId);
+  const interviewerLabel = selectedInterviewer
+    ? `${selectedInterviewer.name} (${selectedInterviewer.email})`
+    : undefined;
+
+  const invalidateQueries = () => {
+    utils.application.getInterviewers.invalidate({ applicationId });
+    utils.application.list.invalidate();
+    utils.application.myAssigned.invalidate();
+    utils.application.getByJobOpeningId.invalidate();
+  };
+
   const assignMutation = trpc.application.assignInterviewer.useMutation({
     onSuccess: () => {
       toast.success("Interviewer assigned to panel");
       setSelectedInterviewerId("");
       setOpen(false);
-      utils.application.getInterviewers.invalidate({ applicationId });
+      invalidateQueries();
     },
     onError: (error) => {
       toast.error(error.message || "Failed to assign interviewer");
@@ -51,7 +63,7 @@ export function InterviewPanel({ applicationId }: InterviewPanelProps) {
   const removeMutation = trpc.application.removeInterviewer.useMutation({
     onSuccess: () => {
       toast.success("Interviewer removed from panel");
-      utils.application.getInterviewers.invalidate({ applicationId });
+      invalidateQueries();
     },
     onError: (error) => {
       toast.error(error.message || "Failed to remove interviewer");
@@ -119,11 +131,17 @@ export function InterviewPanel({ applicationId }: InterviewPanelProps) {
                   onValueChange={(val) => setSelectedInterviewerId(val ?? "")}
                 >
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select an interviewer..." />
+                    <SelectValue placeholder="Select an interviewer...">
+                      {interviewerLabel}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {assignable.map((user) => (
-                      <SelectItem key={user.id} value={user.id}>
+                      <SelectItem
+                        key={user.id}
+                        value={user.id}
+                        label={`${user.name} (${user.email})`}
+                      >
                         <div className="flex flex-col text-left">
                           <span className="font-semibold text-xs">{user.name}</span>
                           <span className="text-[10px] text-[var(--text-tertiary)]">{user.email}</span>

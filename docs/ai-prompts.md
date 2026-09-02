@@ -58,3 +58,11 @@ What is the best way to implement the pipeline structure (APPLIED -> SCREENING -
 Received an architectural plan to define `ApplicationStage` enum in Prisma, add `stageBeforeRejection` field to preserve pre-rejection state, build a centralized transition helper (`getNextStage`), restrict transition endpoints to `recruiterProcedure` middleware, and calculate stage advancement strictly on the server without accepting client stage overrides.
 
 ---
+
+## Resolving Select Label vs Value Display Bug
+
+### Prompt
+In frontend it shows the id instead of name when I select the interviewer from drop down of assign interviewer and from drop down of job position in search. The database/API should continue using IDs, frontend stores ID but displays name/title.
+
+### What you got
+Updated `InterviewPanel` and `CandidateSearchList` select components to resolve selected IDs against loaded arrays (`selectedJobOpening`, `selectedInterviewer`) and explicitly render human-readable name/title labels inside `<SelectValue>` while preserving database IDs in state and mutation payloads.

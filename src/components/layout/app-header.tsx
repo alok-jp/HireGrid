@@ -22,6 +22,7 @@ const NAV = {
   recruiter: [
     { href: "/recruiter", label: "Dashboard" },
     { href: "/recruiter/job-openings", label: "Job Openings" },
+    { href: "/recruiter/candidates", label: "Candidates" },
     { href: "/recruiter/job-openings/archived", label: "Archived" },
   ],
   interviewer: [

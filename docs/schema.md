@@ -103,3 +103,10 @@ Answer each of these, in your own words.
 ## Deliberate Denormalisation
 
 - Stored `role` directly on `user`, `status` directly on `job_opening`, and `stage` directly on `application` as enums instead of join tables, avoiding extra joins on every request.
+
+---
+
+## Candidate Search & Indexing Architecture
+
+- **Server-Side Pagination Querying**: `application.list` executes `skip = (page - 1) * pageSize` and `take = pageSize` combined with `count()` in a PostgreSQL transaction, guaranteeing that only the active page size (default 15/20) is transferred over the network.
+- **Index Support**: Relies on PostgreSQL B-Tree indexes on `application.jobOpeningId`, `application.stage`, `application.source`, `application.createdAt`, `application.updatedAt`, and composite `[jobOpeningId, stage]` for sub-10ms filter and sort execution.

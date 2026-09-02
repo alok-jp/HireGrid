@@ -47,3 +47,9 @@ below, not necessarily the last one; add a **Later reversed:** line to whichever
 - **Chose:** Composite Primary Key Join Table (`ApplicationInterviewer` with `@@id([applicationId, interviewerId])`).
 - **Rejected:** Single `interviewerId` field on `Application` or unconstrained array fields.
 - **Why:** Enforces many-to-many relationship where applications can have multiple interviewers and interviewers can evaluate multiple applications across positions without duplicate records.
+
+## Decision 8
+
+- **Chose:** Server-side search, multi-field filtering, whitelisted sorting, and transactional pagination in PostgreSQL via Prisma.
+- **Rejected:** Client-side array filtering in React or introducing external search clusters (Elasticsearch / Algolia).
+- **Why:** Prevents transferring unneeded rows over the network, maintains strict interviewer authorization boundaries at the database query level, and scales efficiently for large datasets without adding operational overhead.
