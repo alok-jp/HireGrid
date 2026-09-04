@@ -721,30 +721,6 @@ export const applicationRouter = {
     };
   }),
 
-  getAssignableInterviewers: recruiterProcedure.query(async ({ ctx }) => {
-    if (!canAssignInterviewer(ctx.session.user)) {
-      throw new TRPCError({
-        code: "FORBIDDEN",
-        message: "You do not have permission to view assignable interviewers.",
-      });
-    }
-
-    const interviewers = await prisma.user.findMany({
-      where: {
-        role: "INTERVIEWER",
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-      },
-      orderBy: { name: "asc" },
-    });
-
-    return interviewers;
-  }),
-
   assignInterviewer: recruiterProcedure
     .input(assignInterviewerSchema)
     .mutation(async ({ input, ctx }) => {

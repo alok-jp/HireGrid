@@ -13,7 +13,18 @@ import { protectedProcedure, recruiterProcedure } from "@/trpc/init";
 
 const createInterviewSchema = z.object({
   applicationId: z.string().min(1, "Application ID is required"),
-  scheduledAt: z.string().datetime({ message: "Invalid date and time format" }),
+  scheduledAt: z
+    .string({ message: "Interview date is required." })
+    .trim()
+    .min(1, "Interview date is required.")
+    .datetime({ message: "Invalid date and time format" })
+    .refine(
+      (val) => {
+        const d = new Date(val);
+        return !Number.isNaN(d.getTime());
+      },
+      { message: "Interview date is required and must be a valid date." },
+    ),
   duration: z.number().int().min(15).max(480).default(60),
   interviewerIds: z
     .array(z.string().min(1))
@@ -23,7 +34,18 @@ const createInterviewSchema = z.object({
 
 const updateInterviewSchema = z.object({
   id: z.string().min(1, "Interview ID is required"),
-  scheduledAt: z.string().datetime({ message: "Invalid date and time format" }),
+  scheduledAt: z
+    .string({ message: "Interview date is required." })
+    .trim()
+    .min(1, "Interview date is required.")
+    .datetime({ message: "Invalid date and time format" })
+    .refine(
+      (val) => {
+        const d = new Date(val);
+        return !Number.isNaN(d.getTime());
+      },
+      { message: "Interview date is required and must be a valid date." },
+    ),
   duration: z.number().int().min(15).max(480).default(60),
   interviewerIds: z
     .array(z.string().min(1))
@@ -118,7 +140,36 @@ export const interviewRouter = {
       if (Number.isNaN(scheduledDate.getTime())) {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "Invalid scheduled date and time.",
+          message: "Interview date is required and must be a valid date.",
+        });
+      }
+
+      // Verify that candidate has assigned interviewers and that all selected interviewers are assigned to this candidate
+      const assignedRecords = await prisma.applicationInterviewer.findMany({
+        where: { applicationId: input.applicationId },
+        select: { interviewerId: true },
+      });
+
+      if (assignedRecords.length === 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "This candidate has no assigned interviewers on their panel. Please assign interviewers to the candidate before scheduling an interview.",
+        });
+      }
+
+      const assignedIdSet = new Set(
+        assignedRecords.map((r) => r.interviewerId),
+      );
+      const unassignedInterviewers = uniqueInterviewerIds.filter(
+        (id) => !assignedIdSet.has(id),
+      );
+
+      if (unassignedInterviewers.length > 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "One or more selected interviewers are not assigned to this candidate. Only assigned panel members can be scheduled for interviews.",
         });
       }
 
@@ -225,7 +276,36 @@ export const interviewRouter = {
       if (Number.isNaN(scheduledDate.getTime())) {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "Invalid scheduled date and time.",
+          message: "Interview date is required and must be a valid date.",
+        });
+      }
+
+      // Verify that candidate has assigned interviewers and that all selected interviewers are assigned to this candidate
+      const assignedRecords = await prisma.applicationInterviewer.findMany({
+        where: { applicationId: existing.applicationId },
+        select: { interviewerId: true },
+      });
+
+      if (assignedRecords.length === 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "This candidate has no assigned interviewers on their panel. Please assign interviewers to the candidate before scheduling an interview.",
+        });
+      }
+
+      const assignedIdSet = new Set(
+        assignedRecords.map((r) => r.interviewerId),
+      );
+      const unassignedInterviewers = uniqueInterviewerIds.filter(
+        (id) => !assignedIdSet.has(id),
+      );
+
+      if (unassignedInterviewers.length > 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "One or more selected interviewers are not assigned to this candidate. Only assigned panel members can be scheduled for interviews.",
         });
       }
 

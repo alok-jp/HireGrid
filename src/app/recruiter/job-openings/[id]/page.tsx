@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { Badge } from "@/components/ui/badge";
+import { MarkdownContent } from "@/components/ui/markdown-content";
 import { ApplicationSkeleton } from "@/components/ui/skeletons";
 import { ApplicationList } from "@/features/applications/application-list";
 import { createTRPCContext } from "@/trpc/context";
@@ -84,13 +85,11 @@ export default async function JobOpeningDetailPage({
       </div>
 
       {/* Description Summary */}
-      <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-1)] p-4 space-y-1">
-        <h3 className="text-micro font-bold tracking-wider text-[var(--text-tertiary)] uppercase">
+      <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-1)] p-5 space-y-3">
+        <h3 className="text-micro font-bold tracking-wider text-[var(--text-tertiary)] uppercase border-b border-[var(--border-subtle)] pb-2">
           Role Description
         </h3>
-        <p className="text-xs text-[var(--text-secondary)] leading-relaxed whitespace-pre-line">
-          {jobOpening.description}
-        </p>
+        <MarkdownContent content={jobOpening.description} />
       </div>
 
       {/* Streaming Candidate Applications */}
