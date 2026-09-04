@@ -289,9 +289,13 @@ export function InterviewFeedback({
                   <div className="flex items-center gap-2">
                     <UserCheck className="w-4 h-4 text-[var(--accent)]" />
                     <span className="font-bold text-[var(--text-primary)]">
-                      {fb.interviewer.name}
+                      {fb.interviewer?.name ?? "Former Team Member"}
                     </span>
-                    <span className="text-meta">({fb.interviewer.email})</span>
+                    {fb.interviewer?.email && (
+                      <span className="text-meta">
+                        ({fb.interviewer.email})
+                      </span>
+                    )}
                   </div>
 
                   <span

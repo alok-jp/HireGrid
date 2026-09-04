@@ -23,9 +23,10 @@ import { trpc } from "@/trpc/client";
 
 interface InterviewPanelProps {
   applicationId: string;
+  stage?: string;
 }
 
-export function InterviewPanel({ applicationId }: InterviewPanelProps) {
+export function InterviewPanel({ applicationId, stage }: InterviewPanelProps) {
   const [open, setOpen] = useState(false);
   const [selectedInterviewerId, setSelectedInterviewerId] =
     useState<string>("");
@@ -94,99 +95,105 @@ export function InterviewPanel({ applicationId }: InterviewPanelProps) {
           </span>
         </div>
 
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger
-            render={
-              <Button
-                size="sm"
-                variant="outline"
-                className="text-xs gap-1 py-1 h-7 border-[var(--border-default)] hover:bg-[var(--surface-2)]"
-              >
-                <UserPlus className="w-3.5 h-3.5" />
-                <span>Assign Interviewer</span>
-              </Button>
-            }
-          />
-
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle className="text-base font-bold">
-                Assign Panel Interviewer
-              </DialogTitle>
-            </DialogHeader>
-
-            <div className="space-y-4 py-3">
-              <p className="text-xs text-[var(--text-secondary)]">
-                Select an interviewer to evaluate this candidate application.
-                All registered team members are available to be assigned.
-              </p>
-
-              {isLoadingAssignable ? (
-                <div className="flex items-center gap-2 py-4 text-xs text-[var(--text-tertiary)]">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Loading available interviewers...
-                </div>
-              ) : !assignable || assignable.length === 0 ? (
-                <p className="text-xs text-[var(--text-tertiary)] italic py-2">
-                  No interviewers found in system. Invite an interviewer via
-                  Admin portal.
-                </p>
-              ) : (
-                <Select
-                  value={selectedInterviewerId}
-                  onValueChange={(val) => setSelectedInterviewerId(val ?? "")}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select an interviewer...">
-                      {interviewerLabel}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {assignable.map((user) => (
-                      <SelectItem
-                        key={user.id}
-                        value={user.id}
-                        label={`${user.name} (${user.email})`}
-                      >
-                        <div className="flex flex-col text-left">
-                          <span className="font-semibold text-xs">
-                            {user.name}
-                          </span>
-                          <span className="text-[10px] text-[var(--text-tertiary)]">
-                            {user.email}
-                          </span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-
-              <div className="flex justify-end gap-2 pt-2">
+        {stage === "APPLIED" ? (
+          <span className="text-[11px] text-[var(--text-tertiary)] italic">
+            Available after Applied stage
+          </span>
+        ) : (
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger
+              render={
                 <Button
+                  size="sm"
                   variant="outline"
-                  size="sm"
-                  onClick={() => setOpen(false)}
-                  disabled={isPending}
+                  className="text-xs gap-1 py-1 h-7 border-[var(--border-default)] hover:bg-[var(--surface-2)]"
                 >
-                  Cancel
+                  <UserPlus className="w-3.5 h-3.5" />
+                  <span>Assign Interviewer</span>
                 </Button>
-                <Button
-                  size="sm"
-                  className="btn-primary"
-                  onClick={handleAssign}
-                  disabled={!selectedInterviewerId || isPending}
-                >
-                  {assignMutation.isPending ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    "Assign to Panel"
-                  )}
-                </Button>
+              }
+            />
+
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle className="text-base font-bold">
+                  Assign Panel Interviewer
+                </DialogTitle>
+              </DialogHeader>
+
+              <div className="space-y-4 py-3">
+                <p className="text-xs text-[var(--text-secondary)]">
+                  Select an interviewer to evaluate this candidate application.
+                  All registered team members are available to be assigned.
+                </p>
+
+                {isLoadingAssignable ? (
+                  <div className="flex items-center gap-2 py-4 text-xs text-[var(--text-tertiary)]">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Loading available interviewers...
+                  </div>
+                ) : !assignable || assignable.length === 0 ? (
+                  <p className="text-xs text-[var(--text-tertiary)] italic py-2">
+                    No interviewers found in system. Invite an interviewer via
+                    Admin portal.
+                  </p>
+                ) : (
+                  <Select
+                    value={selectedInterviewerId}
+                    onValueChange={(val) => setSelectedInterviewerId(val ?? "")}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select an interviewer...">
+                        {interviewerLabel}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {assignable.map((user) => (
+                        <SelectItem
+                          key={user.id}
+                          value={user.id}
+                          label={`${user.name} (${user.email})`}
+                        >
+                          <div className="flex flex-col text-left">
+                            <span className="font-semibold text-xs">
+                              {user.name}
+                            </span>
+                            <span className="text-[10px] text-[var(--text-tertiary)]">
+                              {user.email}
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setOpen(false)}
+                    disabled={isPending}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="btn-primary"
+                    onClick={handleAssign}
+                    disabled={!selectedInterviewerId || isPending}
+                  >
+                    {assignMutation.isPending ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      "Assign to Panel"
+                    )}
+                  </Button>
+                </div>
               </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
 
       {isLoadingPanel ? (
@@ -197,7 +204,9 @@ export function InterviewPanel({ applicationId }: InterviewPanelProps) {
       ) : !panel || panel.length === 0 ? (
         <div className="py-3 text-center border border-dashed border-[var(--border-subtle)] rounded-sm">
           <p className="text-xs text-[var(--text-tertiary)]">
-            No interviewers assigned to this application yet.
+            {stage === "APPLIED"
+              ? "Interviewer panel assignment becomes available once candidate advances past the Applied stage."
+              : "No interviewers assigned to this application yet."}
           </p>
         </div>
       ) : (
@@ -215,14 +224,14 @@ export function InterviewPanel({ applicationId }: InterviewPanelProps) {
               >
                 <div className="flex items-center gap-2.5">
                   <div className="w-7 h-7 rounded-full bg-[var(--accent-soft)] text-[var(--accent)] flex items-center justify-center text-xs font-bold shrink-0">
-                    {interviewer.name.charAt(0).toUpperCase()}
+                    {(interviewer.name || "?").charAt(0).toUpperCase()}
                   </div>
                   <div>
                     <div className="text-xs font-semibold text-[var(--text-primary)]">
-                      {interviewer.name}
+                      {interviewer.name || "Unknown Interviewer"}
                     </div>
                     <div className="text-[11px] text-[var(--text-tertiary)] flex items-center gap-2 mt-0.5">
-                      <span>{interviewer.email}</span>
+                      <span>{interviewer.email || "—"}</span>
                       {interviewer.assignedAt && (
                         <>
                           <span>•</span>
@@ -247,21 +256,22 @@ export function InterviewPanel({ applicationId }: InterviewPanelProps) {
                   </div>
                 </div>
 
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-7 px-2 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20"
-                  disabled={isPending}
-                  onClick={() =>
-                    removeMutation.mutate({
-                      applicationId,
-                      interviewerId: interviewer.id,
-                    })
-                  }
-                >
-                  <Trash2 className="w-3.5 h-3.5 mr-1" />
-                  Remove
-                </Button>
+                {stage !== "APPLIED" && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 px-2 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20"
+                    disabled={isPending}
+                    onClick={() =>
+                      removeMutation.mutate({
+                        applicationId,
+                        interviewerId: interviewer.id,
+                      })
+                    }
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                )}
               </div>
             ),
           )}

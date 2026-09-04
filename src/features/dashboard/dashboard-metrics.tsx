@@ -19,6 +19,7 @@ import {
   XCircle,
 } from "lucide-react";
 import Link from "next/link";
+import { useMemo, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -46,6 +47,26 @@ export function DashboardMetrics() {
     },
   );
   const stalledCount = stalledData?.count ?? 0;
+
+  const [jobFilter, setJobFilter] = useState<"5" | "10" | "all">("10");
+
+  const sortedJobs = useMemo(() => {
+    if (!data?.applicationsByJobOpening) return [];
+    return [...data.applicationsByJobOpening].sort((a, b) => {
+      if (b.count !== a.count) {
+        return b.count - a.count;
+      }
+      return a.title.localeCompare(b.title);
+    });
+  }, [data?.applicationsByJobOpening]);
+
+  const displayedJobs = useMemo(() => {
+    if (jobFilter === "5") return sortedJobs.slice(0, 5);
+    if (jobFilter === "10") return sortedJobs.slice(0, 10);
+    return sortedJobs;
+  }, [sortedJobs, jobFilter]);
+
+  const jobChartHeight = Math.max(220, displayedJobs.length * 36);
 
   if (isLoading) {
     return (
@@ -212,63 +233,132 @@ export function DashboardMetrics() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Applications by Job Opening */}
         <div className="p-5 rounded-md border border-[var(--border-subtle)] bg-[var(--surface-0)] space-y-4 shadow-xs">
-          <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-[var(--border-subtle)] pb-3">
             <div className="flex items-center gap-2">
               <Building2 className="w-4 h-4 text-[var(--accent)]" />
               <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
                 Applications by Job Opening
               </span>
             </div>
-            <span className="text-meta text-xs font-semibold">
-              Top Open Positions
-            </span>
+
+            <div className="flex items-center gap-3">
+              {sortedJobs.length > 0 && (
+                <div className="flex items-center gap-1.5 text-xs text-[var(--text-tertiary)]">
+                  <span className="text-[11px]">Show:</span>
+                  <div className="inline-flex rounded-md border border-[var(--border-subtle)] p-0.5 bg-[var(--surface-1)]">
+                    {(["5", "10", "all"] as const).map((opt) => (
+                      <button
+                        key={opt}
+                        type="button"
+                        onClick={() => setJobFilter(opt)}
+                        className={`px-2 py-0.5 text-[10px] font-semibold rounded-xs transition-colors ${
+                          jobFilter === opt
+                            ? "bg-[var(--surface-0)] text-[var(--text-primary)] shadow-xs"
+                            : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
+                        }`}
+                      >
+                        {opt === "all" ? "All" : `Top ${opt}`}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <Link
+                href="/recruiter/job-openings"
+                className="text-xs text-[var(--accent)] hover:underline font-semibold inline-flex items-center gap-1 shrink-0"
+              >
+                <span>View all</span>
+                <ArrowRight className="w-3 h-3" />
+              </Link>
+            </div>
           </div>
 
-          {data.applicationsByJobOpening.length === 0 ? (
+          {displayedJobs.length === 0 ? (
             <div className="py-8 text-center border border-dashed border-[var(--border-subtle)] rounded-sm">
               <p className="text-xs text-[var(--text-tertiary)]">
                 No active open job positions found.
               </p>
             </div>
           ) : (
-            <div className="h-64 w-full pt-2">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={data.applicationsByJobOpening}
-                  layout="vertical"
-                  margin={{ top: 5, right: 20, left: 10, bottom: 5 }}
+            <div className="space-y-2">
+              <div className="w-full overflow-y-auto max-h-[380px] pt-1 pr-1">
+                <div
+                  style={{
+                    height: `${jobChartHeight}px`,
+                    width: "100%",
+                    minWidth: "260px",
+                  }}
                 >
-                  <XAxis
-                    type="number"
-                    allowDecimals={false}
-                    stroke="var(--text-tertiary)"
-                    fontSize={11}
-                  />
-                  <YAxis
-                    type="category"
-                    dataKey="title"
-                    stroke="var(--text-tertiary)"
-                    fontSize={11}
-                    width={110}
-                    tickFormatter={(val) =>
-                      val.length > 15 ? `${val.substring(0, 15)}...` : val
-                    }
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "var(--surface-0)",
-                      borderColor: "var(--border-subtle)",
-                      borderRadius: "6px",
-                      fontSize: "12px",
-                    }}
-                  />
-                  <Bar
-                    dataKey="count"
-                    fill="var(--accent)"
-                    radius={[0, 4, 4, 0]}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={displayedJobs}
+                      layout="vertical"
+                      margin={{ top: 5, right: 30, left: 10, bottom: 5 }}
+                    >
+                      <XAxis
+                        type="number"
+                        allowDecimals={false}
+                        stroke="var(--text-tertiary)"
+                        fontSize={11}
+                      />
+                      <YAxis
+                        type="category"
+                        dataKey="title"
+                        stroke="var(--text-tertiary)"
+                        fontSize={11}
+                        width={130}
+                        tickFormatter={(val) =>
+                          val.length > 18 ? `${val.substring(0, 18)}...` : val
+                        }
+                      />
+                      <Tooltip
+                        content={({ active, payload }) => {
+                          if (active && payload && payload.length) {
+                            const item = payload[0].payload;
+                            return (
+                              <div className="rounded-md border border-[var(--border-subtle)] bg-[var(--surface-0)] p-2.5 shadow-md text-xs space-y-1">
+                                <p className="font-bold text-[var(--text-primary)]">
+                                  {item.title}
+                                </p>
+                                <p className="text-[11px] text-[var(--text-tertiary)]">
+                                  {item.department}
+                                </p>
+                                <div className="flex items-center gap-1.5 pt-1 border-t border-[var(--border-subtle)] text-[var(--text-secondary)]">
+                                  <span className="w-2 h-2 rounded-full bg-[var(--accent)]" />
+                                  <span>Applications:</span>
+                                  <span className="font-bold text-[var(--text-primary)]">
+                                    {item.count}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
+                      <Bar
+                        dataKey="count"
+                        fill="var(--accent)"
+                        radius={[0, 4, 4, 0]}
+                        barSize={18}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {jobFilter === "all" && sortedJobs.length > 10 && (
+                <div className="flex items-center justify-between text-[11px] text-[var(--text-tertiary)] pt-2 border-t border-[var(--border-subtle)]">
+                  <span>Showing all {sortedJobs.length} active positions</span>
+                  <Link
+                    href="/recruiter/job-openings"
+                    className="text-[var(--accent)] hover:underline font-semibold inline-flex items-center gap-1"
+                  >
+                    View in table format →
+                  </Link>
+                </div>
+              )}
             </div>
           )}
         </div>

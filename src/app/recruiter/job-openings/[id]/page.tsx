@@ -1,6 +1,5 @@
 import { ArrowLeft, Building2, Pencil, Plus } from "lucide-react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { Badge } from "@/components/ui/badge";
 import { MarkdownContent } from "@/components/ui/markdown-content";
@@ -26,7 +25,62 @@ export default async function JobOpeningDetailPage({
   try {
     jobOpening = await caller.jobOpening.getById({ id });
   } catch {
-    notFound();
+    jobOpening = undefined;
+  }
+
+  if (!jobOpening) {
+    return (
+      <div className="container mx-auto space-y-6 p-6 sm:p-8 max-w-4xl">
+        <Link
+          href="/recruiter/job-openings"
+          className="inline-flex items-center text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors font-medium"
+        >
+          <ArrowLeft className="mr-1 h-3.5 w-3.5" />
+          Back to Job Openings
+        </Link>
+
+        <div className="p-8 sm:p-10 rounded-lg border border-dashed border-[var(--border-subtle)] bg-[var(--surface-0)] text-center space-y-4 shadow-sm">
+          <div className="w-12 h-12 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto">
+            <Building2 className="w-6 h-6" />
+          </div>
+
+          <div className="space-y-1.5">
+            <span className="text-xs font-mono font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+              Job Opening Not Found
+            </span>
+            <h1 className="text-display text-[var(--text-primary)]">
+              This Job Opening No Longer Exists
+            </h1>
+            <p className="text-xs text-[var(--text-secondary)] max-w-md mx-auto leading-relaxed">
+              The job opening you are attempting to view may have been deleted,
+              archived, or the link is no longer valid.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-3">
+            <Link
+              href="/recruiter/job-openings"
+              className="btn-primary text-xs inline-flex items-center gap-1.5"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>All Job Openings</span>
+            </Link>
+            <Link
+              href="/recruiter/candidates"
+              className="btn-secondary text-xs inline-flex items-center gap-1.5"
+            >
+              <span>View All Candidates</span>
+            </Link>
+            <Link
+              href="/recruiter"
+              className="btn-secondary text-xs inline-flex items-center gap-1.5"
+            >
+              <span>Dashboard</span>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (

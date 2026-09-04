@@ -28,9 +28,10 @@ interface ApplicationListProps {
 
 export function ApplicationList({ jobOpeningId }: ApplicationListProps) {
   const router = useRouter();
-  const { data, isLoading } = trpc.application.getByJobOpeningId.useQuery({
-    jobOpeningId,
-  });
+  const { data, isLoading, error, refetch } =
+    trpc.application.getByJobOpeningId.useQuery({
+      jobOpeningId,
+    });
 
   if (isLoading) {
     return (
@@ -44,6 +45,23 @@ export function ApplicationList({ jobOpeningId }: ApplicationListProps) {
             <div className="skeleton w-full h-8" />
           </div>
         ))}
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="py-8 px-4 text-center border border-dashed border-rose-500/30 bg-rose-500/5 rounded-md space-y-2">
+        <p className="text-xs text-rose-600 dark:text-rose-400 font-semibold">
+          Unable to load candidate applications for this position.
+        </p>
+        <button
+          type="button"
+          onClick={() => refetch()}
+          className="text-xs text-[var(--accent)] hover:underline font-semibold cursor-pointer"
+        >
+          Try Again
+        </button>
       </div>
     );
   }

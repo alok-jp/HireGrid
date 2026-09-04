@@ -6,6 +6,7 @@ export const userRouter = router({
     const interviewers = await prisma.user.findMany({
       where: {
         role: "INTERVIEWER",
+        isActive: true,
       },
       select: {
         id: true,

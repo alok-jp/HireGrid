@@ -109,8 +109,7 @@ export const dashboardRouter = {
             select: { applications: true },
           },
         },
-        orderBy: { createdAt: "desc" },
-        take: 10,
+        orderBy: [{ applications: { _count: "desc" } }, { title: "asc" }],
       }),
 
       // 8. Applications by Stage Aggregation

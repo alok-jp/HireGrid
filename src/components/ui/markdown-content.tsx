@@ -74,19 +74,43 @@ type Block =
   | { type: "ol"; items: string[] }
   | { type: "p"; text: string };
 
+function getListItem(line: string): { type: "ul" | "ol"; text: string } | null {
+  const trimmed = line.trim();
+  const unicodeMatch = trimmed.match(
+    /^[•⁃◦▪▫\u2022\u2023\u2043\u25E6\u25AA\u25AB\u00B7►✓✔]\s*(.*)$/,
+  );
+  if (unicodeMatch && unicodeMatch[1].trim().length > 0) {
+    return { type: "ul", text: unicodeMatch[1].trim() };
+  }
+
+  const asciiMatch = trimmed.match(/^[*+\u2013\u2014-]\s+(.*)$/);
+  if (asciiMatch && asciiMatch[1].trim().length > 0) {
+    return { type: "ul", text: asciiMatch[1].trim() };
+  }
+
+  const olMatch = trimmed.match(/^(\d+)[.)]\s+(.*)$/);
+  if (olMatch && olMatch[2].trim().length > 0) {
+    return { type: "ol", text: olMatch[2].trim() };
+  }
+
+  return null;
+}
+
 function parseBlocks(content: string): Block[] {
-  const lines = content.split("\n");
+  const normalized = content.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  const lines = normalized.split("\n");
   const blocks: Block[] = [];
 
   let currentListType: "ul" | "ol" | null = null;
   let currentListItems: string[] = [];
   let currentParagraph: string[] = [];
+  let hasPendingBlankLine = false;
 
   const flushParagraph = () => {
     if (currentParagraph.length > 0) {
       blocks.push({
         type: "p",
-        text: currentParagraph.join(" "),
+        text: currentParagraph.join("\n"),
       });
       currentParagraph = [];
     }
@@ -101,6 +125,7 @@ function parseBlocks(content: string): Block[] {
       currentListType = null;
       currentListItems = [];
     }
+    hasPendingBlankLine = false;
   };
 
   for (let i = 0; i < lines.length; i++) {
@@ -109,61 +134,57 @@ function parseBlocks(content: string): Block[] {
 
     if (!trimmed) {
       flushParagraph();
-      flushList();
-      continue;
-    }
-
-    // Headings
-    if (trimmed.startsWith("#### ")) {
-      flushParagraph();
-      flushList();
-      blocks.push({ type: "h4", text: trimmed.slice(5).trim() });
-      continue;
-    }
-    if (trimmed.startsWith("### ")) {
-      flushParagraph();
-      flushList();
-      blocks.push({ type: "h3", text: trimmed.slice(4).trim() });
-      continue;
-    }
-    if (trimmed.startsWith("## ")) {
-      flushParagraph();
-      flushList();
-      blocks.push({ type: "h2", text: trimmed.slice(3).trim() });
-      continue;
-    }
-    if (trimmed.startsWith("# ")) {
-      flushParagraph();
-      flushList();
-      blocks.push({ type: "h1", text: trimmed.slice(2).trim() });
-      continue;
-    }
-
-    // Unordered List (- item or * item)
-    if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
-      flushParagraph();
-      if (currentListType !== "ul") {
-        flushList();
-        currentListType = "ul";
+      if (currentListType) {
+        hasPendingBlankLine = true;
       }
-      currentListItems.push(trimmed.slice(2).trim());
       continue;
     }
 
-    // Ordered List (1. item, 2. item)
-    const olMatch = trimmed.match(/^(\d+)\.\s+(.*)$/);
-    if (olMatch) {
+    // Headings (#, ##, ###, ####, #####, ######)
+    const headingMatch = trimmed.match(/^(#{1,6})\s+(.*)$/);
+    if (headingMatch) {
       flushParagraph();
-      if (currentListType !== "ol") {
-        flushList();
-        currentListType = "ol";
-      }
-      currentListItems.push(olMatch[2].trim());
+      flushList();
+      const level = headingMatch[1].length;
+      const text = headingMatch[2].trim();
+      if (level === 1) blocks.push({ type: "h1", text });
+      else if (level === 2) blocks.push({ type: "h2", text });
+      else if (level === 3) blocks.push({ type: "h3", text });
+      else blocks.push({ type: "h4", text });
       continue;
     }
 
-    // Regular paragraph line
-    flushList();
+    // List item (bullets or ordered numbers)
+    const listItem = getListItem(rawLine);
+    if (listItem) {
+      flushParagraph();
+      if (currentListType !== listItem.type) {
+        flushList();
+        currentListType = listItem.type;
+      }
+      currentListItems.push(listItem.text);
+      hasPendingBlankLine = false;
+      continue;
+    }
+
+    // Indented continuation line for current list item
+    if (
+      currentListType !== null &&
+      !hasPendingBlankLine &&
+      currentListItems.length > 0 &&
+      (rawLine.startsWith("  ") || rawLine.startsWith("\t"))
+    ) {
+      const lastIndex = currentListItems.length - 1;
+      currentListItems[lastIndex] =
+        `${currentListItems[lastIndex]}\n${trimmed}`;
+      continue;
+    }
+
+    // Regular paragraph text: if we were previously in a list, close it
+    if (currentListType !== null) {
+      flushList();
+    }
+
     currentParagraph.push(trimmed);
   }
 
@@ -220,10 +241,13 @@ export function MarkdownContent({
             return (
               <ul
                 key={key}
-                className="list-disc pl-5 space-y-1 text-xs text-[var(--text-secondary)] leading-relaxed my-1.5"
+                className="list-disc pl-5 space-y-1.5 text-xs text-[var(--text-secondary)] leading-relaxed my-1.5"
               >
-                {block.items.map((item) => (
-                  <li key={`ul-item-${item.slice(0, 24)}`}>
+                {block.items.map((item, itemIdx) => (
+                  <li
+                    key={`ul-item-${itemIdx}-${item.slice(0, 20)}`}
+                    className="whitespace-pre-wrap"
+                  >
                     {parseInline(item)}
                   </li>
                 ))}
@@ -233,10 +257,13 @@ export function MarkdownContent({
             return (
               <ol
                 key={key}
-                className="list-decimal pl-5 space-y-1 text-xs text-[var(--text-secondary)] leading-relaxed my-1.5"
+                className="list-decimal pl-5 space-y-1.5 text-xs text-[var(--text-secondary)] leading-relaxed my-1.5"
               >
-                {block.items.map((item) => (
-                  <li key={`ol-item-${item.slice(0, 24)}`}>
+                {block.items.map((item, itemIdx) => (
+                  <li
+                    key={`ol-item-${itemIdx}-${item.slice(0, 20)}`}
+                    className="whitespace-pre-wrap"
+                  >
                     {parseInline(item)}
                   </li>
                 ))}
@@ -246,7 +273,7 @@ export function MarkdownContent({
             return (
               <p
                 key={key}
-                className="text-xs text-[var(--text-secondary)] leading-relaxed"
+                className="text-xs text-[var(--text-secondary)] leading-relaxed whitespace-pre-wrap"
               >
                 {parseInline(block.text)}
               </p>

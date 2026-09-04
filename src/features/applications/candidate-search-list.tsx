@@ -859,12 +859,14 @@ function CandidateSearchListContent({
                         <div className="flex items-center gap-3 text-meta text-xs">
                           <div className="flex items-center gap-1 text-[var(--accent)] font-semibold">
                             <Briefcase className="w-3.5 h-3.5" />
-                            <span>{app.jobOpening.title}</span>
+                            <span>
+                              {app.jobOpening?.title ?? "Unassigned Role"}
+                            </span>
                           </div>
                           <span>•</span>
                           <div className="flex items-center gap-1 text-[var(--text-secondary)]">
                             <Building2 className="w-3.5 h-3.5" />
-                            <span>{app.jobOpening.department}</span>
+                            <span>{app.jobOpening?.department ?? "—"}</span>
                           </div>
                           <span>•</span>
                           <div className="flex items-center gap-1 text-[var(--text-tertiary)]">

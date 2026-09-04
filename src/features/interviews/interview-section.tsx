@@ -22,6 +22,7 @@ import { trpc } from "@/trpc/client";
 interface InterviewSectionProps {
   applicationId: string;
   isRecruiter?: boolean;
+  stage?: string;
 }
 
 const STATUS_CONFIG: Record<
@@ -55,6 +56,7 @@ const STATUS_CONFIG: Record<
 export function InterviewSection({
   applicationId,
   isRecruiter = true,
+  stage,
 }: InterviewSectionProps) {
   const utils = trpc.useUtils();
 
@@ -119,7 +121,7 @@ export function InterviewSection({
           </span>
         </div>
 
-        {isRecruiter && (
+        {isRecruiter && stage === "INTERVIEW" && (
           <Button
             size="sm"
             onClick={handleOpenScheduleNew}
@@ -138,11 +140,26 @@ export function InterviewSection({
           Loading scheduled interviews...
         </div>
       ) : !interviews || interviews.length === 0 ? (
-        <div className="py-4 text-center border border-dashed border-[var(--border-subtle)] rounded-sm">
-          <p className="text-xs text-[var(--text-tertiary)]">
-            No interviews scheduled for this candidate yet.
-          </p>
-        </div>
+        stage === "APPLIED" ? (
+          <div className="py-4 px-3 text-center border border-dashed border-[var(--border-subtle)] rounded-sm bg-[var(--surface-0)] space-y-1">
+            <Calendar className="w-5 h-5 text-[var(--accent)] mx-auto opacity-80" />
+            <p className="text-xs font-semibold text-[var(--text-primary)]">
+              Interview Scheduling Unavailable
+            </p>
+            <p className="text-[11px] text-[var(--text-tertiary)] max-w-md mx-auto">
+              Interview scheduling becomes available once this candidate moves
+              to the Interview stage.
+            </p>
+          </div>
+        ) : (
+          <div className="py-4 text-center border border-dashed border-[var(--border-subtle)] rounded-sm">
+            <p className="text-xs text-[var(--text-tertiary)]">
+              {stage === "INTERVIEW"
+                ? "No interviews scheduled for this candidate yet. Click 'Schedule Interview' above to set up an interview."
+                : "No interviews scheduled for this candidate."}
+            </p>
+          </div>
+        )
       ) : (
         <div className="space-y-3">
           {interviews.map((item) => {
@@ -189,12 +206,12 @@ export function InterviewSection({
                     Panel:
                   </span>
                   <div className="flex flex-wrap gap-1.5">
-                    {item.interviewers.map((i) => (
+                    {item.interviewers.map((i, idx) => (
                       <span
-                        key={i.interviewer.id}
+                        key={i.interviewer?.id ?? `panel-int-${idx}`}
                         className="px-1.5 py-0.5 rounded bg-[var(--surface-2)] font-semibold text-[var(--text-primary)]"
                       >
-                        {i.interviewer.name}
+                        {i.interviewer?.name ?? "Former Interviewer"}
                       </span>
                     ))}
                   </div>

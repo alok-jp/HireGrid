@@ -28,18 +28,26 @@ import { prisma } from "@/lib/prisma";
 import { protectedProcedure, recruiterProcedure } from "@/trpc/init";
 
 const createApplicationSchema = z.object({
-  jobOpeningId: z.string().min(1, "Job opening ID is required"),
-  candidateName: z.string().min(2, "Candidate name is required").max(100),
-  email: z.string().email("Invalid candidate email address").max(100),
-  source: z.string().min(1, "Source is required").max(100),
+  jobOpeningId: z.string().trim().min(1, "Job opening ID is required"),
+  candidateName: z
+    .string()
+    .trim()
+    .min(2, "Candidate name is required")
+    .max(100),
+  email: z.string().trim().email("Invalid candidate email address").max(100),
+  source: z.string().trim().min(1, "Source is required").max(100),
   notes: z.string().max(2000).optional(),
 });
 
 const updateApplicationSchema = z.object({
-  id: z.string().min(1, "Application ID is required"),
-  candidateName: z.string().min(2, "Candidate name is required").max(100),
-  email: z.string().email("Invalid candidate email address").max(100),
-  source: z.string().min(1, "Source is required").max(100),
+  id: z.string().trim().min(1, "Application ID is required"),
+  candidateName: z
+    .string()
+    .trim()
+    .min(2, "Candidate name is required")
+    .max(100),
+  email: z.string().trim().email("Invalid candidate email address").max(100),
+  source: z.string().trim().min(1, "Source is required").max(100),
   notes: z.string().max(2000).optional(),
 });
 
@@ -74,13 +82,14 @@ const bulkActionSchema = z.object({
 });
 
 const submitFeedbackSchema = z.object({
-  applicationId: z.string().min(1, "Application ID is required"),
+  applicationId: z.string().trim().min(1, "Application ID is required"),
   recommendation: z.enum(["STRONG_HIRE", "HIRE", "NO_HIRE", "STRONG_NO_HIRE"]),
   technicalRating: z.number().int().min(1).max(5).default(3),
   communicationRating: z.number().int().min(1).max(5).default(3),
   problemSolvingRating: z.number().int().min(1).max(5).default(3),
   comments: z
     .string()
+    .trim()
     .min(3, "Please provide evaluation feedback comments")
     .max(2000),
 });
@@ -118,6 +127,13 @@ export const applicationRouter = {
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Job opening not found",
+        });
+      }
+
+      if (jobOpening.status === "ARCHIVED") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Cannot add candidates to an archived job opening.",
         });
       }
 
@@ -742,6 +758,24 @@ export const applicationRouter = {
         });
       }
 
+      if (application.stage === ApplicationStage.APPLIED) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "Interviewer assignment is not available while candidate is in the Applied stage. Move candidate to Screening or Interview first.",
+        });
+      }
+
+      if (
+        application.stage === ApplicationStage.REJECTED ||
+        application.stage === ApplicationStage.HIRED
+      ) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Cannot assign interviewers to an application that is ${application.stage.toLowerCase()}.`,
+        });
+      }
+
       const targetUser = await prisma.user.findUnique({
         where: { id: input.interviewerId },
       });
@@ -750,6 +784,13 @@ export const applicationRouter = {
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Target user not found",
+        });
+      }
+
+      if (!targetUser.isActive) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Cannot assign an inactive or deactivated interviewer.",
         });
       }
 

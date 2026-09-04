@@ -4,16 +4,16 @@ import { prisma } from "@/lib/prisma";
 import { recruiterProcedure } from "@/trpc/init";
 
 const createJobOpeningSchema = z.object({
-  title: z.string().min(1, "Title is required"),
-  department: z.string().min(1, "Department is required"),
-  description: z.string().min(1, "Description is required"),
+  title: z.string().trim().min(1, "Title is required").max(150),
+  department: z.string().trim().min(1, "Department is required").max(100),
+  description: z.string().trim().min(1, "Description is required"),
 });
 
 const updateJobOpeningSchema = z.object({
-  id: z.string().min(1, "Job ID is required"),
-  title: z.string().min(1, "Title is required"),
-  department: z.string().min(1, "Department is required"),
-  description: z.string().min(1, "Description is required"),
+  id: z.string().trim().min(1, "Job ID is required"),
+  title: z.string().trim().min(1, "Title is required").max(150),
+  department: z.string().trim().min(1, "Department is required").max(100),
+  description: z.string().trim().min(1, "Description is required"),
 });
 
 export const jobOpeningRouter = {

@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { Prisma } from "@/generated/prisma/client";
 import {
   ApplicationEventType,
+  ApplicationStage,
   InterviewStatus,
 } from "@/generated/prisma/enums";
 import { logAuditEvent } from "@/lib/logger";
@@ -12,7 +13,7 @@ import { prisma } from "@/lib/prisma";
 import { protectedProcedure, recruiterProcedure } from "@/trpc/init";
 
 const createInterviewSchema = z.object({
-  applicationId: z.string().min(1, "Application ID is required"),
+  applicationId: z.string().trim().min(1, "Application ID is required"),
   scheduledAt: z
     .string({ message: "Interview date is required." })
     .trim()
@@ -21,9 +22,15 @@ const createInterviewSchema = z.object({
     .refine(
       (val) => {
         const d = new Date(val);
-        return !Number.isNaN(d.getTime());
+        if (Number.isNaN(d.getTime())) return false;
+        const tenMinutesAgo = Date.now() - 10 * 60 * 1000;
+        const twoYearsFromNow = Date.now() + 2 * 365 * 24 * 60 * 60 * 1000;
+        return d.getTime() >= tenMinutesAgo && d.getTime() <= twoYearsFromNow;
       },
-      { message: "Interview date is required and must be a valid date." },
+      {
+        message:
+          "Interview must be scheduled for an upcoming date within the next 2 years.",
+      },
     ),
   duration: z.number().int().min(15).max(480).default(60),
   interviewerIds: z
@@ -33,7 +40,7 @@ const createInterviewSchema = z.object({
 });
 
 const updateInterviewSchema = z.object({
-  id: z.string().min(1, "Interview ID is required"),
+  id: z.string().trim().min(1, "Interview ID is required"),
   scheduledAt: z
     .string({ message: "Interview date is required." })
     .trim()
@@ -42,9 +49,15 @@ const updateInterviewSchema = z.object({
     .refine(
       (val) => {
         const d = new Date(val);
-        return !Number.isNaN(d.getTime());
+        if (Number.isNaN(d.getTime())) return false;
+        const tenMinutesAgo = Date.now() - 10 * 60 * 1000;
+        const twoYearsFromNow = Date.now() + 2 * 365 * 24 * 60 * 60 * 1000;
+        return d.getTime() >= tenMinutesAgo && d.getTime() <= twoYearsFromNow;
       },
-      { message: "Interview date is required and must be a valid date." },
+      {
+        message:
+          "Interview must be scheduled for an upcoming date within the next 2 years.",
+      },
     ),
   duration: z.number().int().min(15).max(480).default(60),
   interviewerIds: z
@@ -120,11 +133,22 @@ export const interviewRouter = {
         });
       }
 
+      if (application.stage !== ApplicationStage.INTERVIEW) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            application.stage === ApplicationStage.APPLIED
+              ? "Cannot schedule an interview for a candidate in the Applied stage. Move the candidate to the Interview stage first."
+              : `Cannot schedule an interview for a candidate in the ${application.stage} stage. Interviews can only be scheduled when a candidate is in the Interview stage.`,
+        });
+      }
+
       const uniqueInterviewerIds = Array.from(new Set(input.interviewerIds));
 
       const interviewers = await prisma.user.findMany({
         where: {
           id: { in: uniqueInterviewerIds },
+          isActive: true,
         },
         select: { id: true, role: true, name: true },
       });
@@ -132,7 +156,8 @@ export const interviewRouter = {
       if (interviewers.length !== uniqueInterviewerIds.length) {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "One or more selected interviewers could not be found.",
+          message:
+            "One or more selected interviewers could not be found or are inactive.",
         });
       }
 
@@ -247,6 +272,7 @@ export const interviewRouter = {
     .mutation(async ({ input, ctx }) => {
       const existing = await prisma.interview.findUnique({
         where: { id: input.id },
+        include: { application: true },
       });
 
       if (!existing) {
@@ -256,11 +282,26 @@ export const interviewRouter = {
         });
       }
 
+      if (existing.application.stage !== ApplicationStage.INTERVIEW) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Cannot reschedule interview for a candidate in the ${existing.application.stage} stage. Interviews can only be scheduled or updated when a candidate is in the Interview stage.`,
+        });
+      }
+
+      if (existing.status !== InterviewStatus.SCHEDULED) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Cannot reschedule an interview with status ${existing.status}. Only scheduled interviews can be rescheduled.`,
+        });
+      }
+
       const uniqueInterviewerIds = Array.from(new Set(input.interviewerIds));
 
       const interviewers = await prisma.user.findMany({
         where: {
           id: { in: uniqueInterviewerIds },
+          isActive: true,
         },
         select: { id: true, role: true, name: true },
       });
@@ -268,7 +309,8 @@ export const interviewRouter = {
       if (interviewers.length !== uniqueInterviewerIds.length) {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "One or more selected interviewers could not be found.",
+          message:
+            "One or more selected interviewers could not be found or are inactive.",
         });
       }
 
@@ -397,6 +439,21 @@ export const interviewRouter = {
         });
       }
 
+      if (existing.status === InterviewStatus.COMPLETED) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "Cannot cancel an interview that has already been completed.",
+        });
+      }
+
+      if (existing.status === InterviewStatus.CANCELLED) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "This interview has already been cancelled.",
+        });
+      }
+
       const cancelled = await prisma.$transaction(async (tx) => {
         const inv = await tx.interview.update({
           where: { id: input.id },
@@ -449,6 +506,20 @@ export const interviewRouter = {
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Interview not found",
+        });
+      }
+
+      if (existing.status === InterviewStatus.CANCELLED) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Cannot complete a cancelled interview.",
+        });
+      }
+
+      if (existing.status === InterviewStatus.COMPLETED) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "This interview has already been marked as completed.",
         });
       }
 

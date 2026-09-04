@@ -147,12 +147,12 @@ export function StalledAlertsView() {
                     <div className="flex items-center gap-3 text-xs text-[var(--text-secondary)]">
                       <div className="flex items-center gap-1 text-[var(--accent)] font-semibold">
                         <Briefcase className="w-3.5 h-3.5" />
-                        <span>{alert.jobTitle}</span>
+                        <span>{alert.jobTitle || "Unassigned Position"}</span>
                       </div>
                       <span>•</span>
                       <div className="flex items-center gap-1 text-[var(--text-tertiary)]">
                         <Building2 className="w-3.5 h-3.5" />
-                        <span>{alert.department}</span>
+                        <span>{alert.department || "—"}</span>
                       </div>
                     </div>
                   </div>

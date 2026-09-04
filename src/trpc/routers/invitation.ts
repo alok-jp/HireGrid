@@ -6,7 +6,11 @@ import { prisma } from "@/lib/prisma";
 import { adminProcedure, publicProcedure } from "../init";
 
 const createInvitationSchema = z.object({
-  email: z.email("Please enter a valid email address"),
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .email("Please enter a valid email address"),
   role: z.enum(["INTERVIEWER", "RECRUITER"]),
 });
 
@@ -14,8 +18,10 @@ export const invitationRouter = {
   create: adminProcedure
     .input(createInvitationSchema)
     .mutation(async ({ input, ctx }) => {
+      const email = input.email.trim().toLowerCase();
+
       const existingUser = await prisma.user.findUnique({
-        where: { email: input.email },
+        where: { email },
       });
 
       if (existingUser) {
@@ -26,7 +32,7 @@ export const invitationRouter = {
       }
 
       await prisma.invitation.deleteMany({
-        where: { email: input.email },
+        where: { email },
       });
 
       const token = crypto.randomBytes(32).toString("hex");
@@ -37,7 +43,7 @@ export const invitationRouter = {
       const invitationUrl = `${process.env.APP_URL}/invite/${token}`;
       try {
         await sendInvitationEmail({
-          email: input.email,
+          email,
           role: input.role,
           invitationUrl,
         });
@@ -53,7 +59,7 @@ export const invitationRouter = {
       // Only create DB record AFTER email has been sent successfully
       await prisma.invitation.create({
         data: {
-          email: input.email,
+          email,
           role: input.role,
           tokenHash,
           expiresAt,

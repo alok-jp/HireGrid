@@ -70,7 +70,7 @@ below, not necessarily the last one; add a **Later reversed:** line to whichever
 
 - **Chose:** Append-Only `ApplicationEvent` Table with Transactional Server-Side Writing.
 - **Rejected:** Frontend-driven history submission, mutable history events, or external event streaming.
-- **Why:** HireGrid requires an immutable audit history where nothing can be edited or deleted after the fact. Writing `ApplicationEvent` records inside the same Prisma transaction (`prisma.$transaction`) as state updates guarantees zero history drift, complete server control, and strict compliance with Requirement #9.
+- **Why:** HireGrid requires an immutable audit history where nothing can be edited or deleted after the fact. Writing `ApplicationEvent` records inside the same Prisma transaction (`prisma.$transaction`) as state updates guarantees zero history drift, complete server control, and strict compliance with Requirement.
 
 ## Decision 12
 
@@ -89,3 +89,13 @@ below, not necessarily the last one; add a **Later reversed:** line to whichever
 - **Chose:** Explicit `hiredAt` Timestamping on Stage Transition & Outcomes Workspace Organization.
 - **Rejected:** Inferring hire dates from `updatedAt` or rendering hired/rejected candidates in the standard active pipeline.
 - **Why:** Populating `hiredAt` atomically inside `advanceApplicationDomain` ensures exact monthly hiring metrics without timezone or stage update ambiguity. Structuring the candidate workspace into three clear tabs (`Active Candidates`, `Hired Candidates`, `Rejected Candidates`) inside a unified layout shell provides a consistent, decluttered UX while preserving full candidate history.
+
+## Decision 15
+
+- **Chose:** Horizontal Bar Chart with Dynamic Top-N Filtering (`Top 5`, `Top 10`, `All`) and Scrollable Container.
+- **Rejected:** Fixed-width vertical column bar chart displaying all job openings simultaneously.
+- **Later reversed:** Initially built a vertical column bar chart rendering every opening at once. Reversed this as more job openings were added to the system, which caused vertical bars to crowd, category labels to overlap, and long job titles to become unreadable.
+- **Why:** Horizontal bars provide natural reading width for descriptive job titles, and Top-N sorting keeps the executive dashboard glanceable without breaking layout ergonomics as the organization scales.
+
+
+

@@ -202,6 +202,17 @@ export async function rejectApplicationDomain(
         },
       });
 
+      // Automatically cancel any pending scheduled interviews for this candidate
+      await tx.interview.updateMany({
+        where: {
+          applicationId: id,
+          status: InterviewStatus.SCHEDULED,
+        },
+        data: {
+          status: InterviewStatus.CANCELLED,
+        },
+      });
+
       return await tx.application.findUnique({
         where: { id },
       });
