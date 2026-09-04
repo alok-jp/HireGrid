@@ -12,19 +12,72 @@ datasource db {
   provider = "postgresql"
 }
 
+enum Role {
+  MASTER_ADMIN
+  RECRUITER
+  INTERVIEWER
+}
+
+enum JobOpeningStatus {
+  OPEN
+  ARCHIVED
+}
+
+enum ApplicationStage {
+  APPLIED
+  SCREENING
+  INTERVIEW
+  OFFER
+  HIRED
+  REJECTED
+}
+
+enum Recommendation {
+  STRONG_HIRE
+  HIRE
+  NO_HIRE
+  STRONG_NO_HIRE
+}
+
+enum InterviewStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
+enum ApplicationEventType {
+  CREATED
+  STAGE_CHANGED
+  REJECTED
+  REINSTATED
+  FEEDBACK_ADDED
+  INTERVIEW_SCHEDULED
+  INTERVIEW_RESCHEDULED
+  INTERVIEW_CANCELLED
+}
+
 model User {
-  id            String    @id @default(cuid())
+  id            String       @id @default(cuid())
   name          String
-  email         String    @unique
-  emailVerified Boolean   @default(false)
+  email         String       @unique
+  emailVerified Boolean      @default(false)
   image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  role          String?   @default("user")
+  role          Role         @default(INTERVIEWER)
+  isActive      Boolean      @default(true)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 
-  sessions      Session[]
-  accounts      Account[]
+  sessions              Session[]
+  accounts              Account[]
+  invitations           Invitation[]             @relation("UserInvitations")
+  applicationInterviews ApplicationInterviewer[]
+  feedbacks             ApplicationFeedback[]
+  scheduledInterviews   InterviewInterviewer[]
+  events                ApplicationEvent[]
+  dismissedAlerts       StalledApplicationDismissal[]
 
+  @@index([email])
+  @@index([role, isActive])
   @@map("user")
 }
 
@@ -39,6 +92,7 @@ model Session {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([token])
   @@map("session")
 }
 
@@ -71,4 +125,176 @@ model Verification {
   updatedAt  DateTime? @updatedAt
 
   @@map("verification")
+}
+
+model Invitation {
+  id          String   @id @default(cuid())
+  email       String
+  role        Role
+  tokenHash   String   @unique
+  expiresAt   DateTime
+  usedAt      DateTime?
+  createdAt   DateTime @default(now())
+
+  invitedById String
+  invitedBy   User     @relation("UserInvitations", fields: [invitedById], references: [id], onDelete: Cascade)
+
+  @@index([email])
+  @@index([expiresAt])
+  @@index([usedAt])
+  @@map("invitation")
+}
+
+model JobOpening {
+  id          String           @id @default(cuid())
+  title       String
+  department  String
+  description String
+  status      JobOpeningStatus @default(OPEN)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  applications Application[]
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([department])
+  @@map("job_opening")
+}
+
+model Application {
+  id                   String           @id @default(cuid())
+  candidateName        String
+  email                String
+  source               String
+  notes                String?
+  stage                ApplicationStage @default(APPLIED)
+  stageBeforeRejection ApplicationStage?
+  stageChangedAt       DateTime         @default(now())
+  hiredAt              DateTime?
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+
+  jobOpeningId         String
+  jobOpening           JobOpening       @relation(fields: [jobOpeningId], references: [id], onDelete: Cascade)
+  interviewers         ApplicationInterviewer[]
+  feedbacks            ApplicationFeedback[]
+  interviews           Interview[]
+  events               ApplicationEvent[]
+  dismissals           StalledApplicationDismissal[]
+
+  @@index([jobOpeningId])
+  @@index([email])
+  @@index([stage])
+  @@index([stageChangedAt])
+  @@index([stage, stageChangedAt])
+  @@index([hiredAt])
+  @@index([createdAt])
+  @@index([updatedAt])
+  @@index([source])
+  @@index([jobOpeningId, stage])
+  @@map("application")
+}
+
+model ApplicationInterviewer {
+  applicationId String
+  interviewerId String
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  interviewer User        @relation(fields: [interviewerId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@id([applicationId, interviewerId])
+  @@index([applicationId])
+  @@index([interviewerId])
+  @@map("application_interviewer")
+}
+
+model ApplicationFeedback {
+  id                    String         @id @default(cuid())
+  applicationId         String
+  interviewerId         String
+  recommendation        Recommendation
+  technicalRating       Int            @default(3)
+  communicationRating   Int            @default(3)
+  problemSolvingRating   Int            @default(3)
+  comments              String
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  interviewer User        @relation(fields: [interviewerId], references: [id], onDelete: Cascade)
+
+  @@unique([applicationId, interviewerId])
+  @@index([applicationId])
+  @@index([interviewerId])
+  @@map("application_feedback")
+}
+
+model Interview {
+  id            String          @id @default(cuid())
+  applicationId String
+  scheduledAt   DateTime
+  duration      Int?            @default(60)
+  status        InterviewStatus @default(SCHEDULED)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  application   Application     @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  interviewers  InterviewInterviewer[]
+  events        ApplicationEvent[]
+
+  @@index([applicationId])
+  @@index([scheduledAt])
+  @@index([status])
+  @@map("interview")
+}
+
+model InterviewInterviewer {
+  interviewId   String
+  interviewerId String
+
+  interview   Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+  interviewer User      @relation(fields: [interviewerId], references: [id], onDelete: Cascade)
+
+  @@id([interviewId, interviewerId])
+  @@index([interviewerId])
+  @@map("interview_interviewer")
+}
+
+model ApplicationEvent {
+  id            String               @id @default(cuid())
+  applicationId String
+  type          ApplicationEventType
+  actorId       String
+  oldStage      ApplicationStage?
+  newStage      ApplicationStage?
+  interviewId   String?
+  metadata      Json?
+  createdAt     DateTime             @default(now())
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  actor       User        @relation(fields: [actorId], references: [id], onDelete: Cascade)
+  interview   Interview?  @relation(fields: [interviewId], references: [id], onDelete: SetNull)
+
+  @@index([applicationId, createdAt])
+  @@index([actorId])
+  @@map("application_event")
+}
+
+model StalledApplicationDismissal {
+  id             String           @id @default(cuid())
+  applicationId  String
+  stage          ApplicationStage
+  stageStartedAt DateTime
+  dismissedById  String
+  dismissedAt    DateTime         @default(now())
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  dismissedBy User        @relation(fields: [dismissedById], references: [id], onDelete: Cascade)
+
+  @@unique([applicationId, stage, stageStartedAt])
+  @@index([applicationId])
+  @@map("stalled_application_dismissal")
 }

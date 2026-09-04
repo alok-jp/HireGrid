@@ -7,9 +7,95 @@ below, not necessarily the last one; add a **Later reversed:** line to whichever
 
 ## Decision 1
 
-- **Chose:** Better Auth with the Prisma adapter.
-- **Rejected:** Rolling custom JWT authentication or using NextAuth / Auth.js.
-- **Why:** Better Auth gives us strong TypeScript inference, automatic password hashing, clean session management, and painless Prisma integration without having to write custom token refresh logic.
+- **Chose:** Better Auth with `@better-auth/prisma-adapter`.
+- **Rejected:** Custom JWT authentication or NextAuth.
+- **Why:** Better Auth gives clean session management, automatic password hashing, and strong TypeScript type inference out of the box.
+
+## Decision 2
+
+- **Chose:** Server-side role assignment via database hooks (`input: false`).
+- **Rejected:** Letting users choose their own role during signup.
+- **Why:** Prevents malicious users from self-assigning `MASTER_ADMIN` or `RECRUITER` privileges.
+
+## Decision 3
+
+- **Chose:** Generic SMTP via Nodemailer.
+- **Rejected:** Provider-locked SDKs like Resend or SendGrid.
+- **Later reversed:** Started with Resend, but switched to generic SMTP so the app works with any mail server via standard environment variables also the resend was taking time to verify the domain.
+- **Why:** Allows zero-code-change switching between email providers in development and production.
+
+## Decision 4
+
+- **Chose:** React `cache()` session memoization.
+- **Rejected:** Fetching sessions independently in every layout and page component.
+- **Why:** Dedupes DB session lookups within a single HTTP request, cutting load times significantly.
+
+## Decision 5
+
+- **Chose:** `prisma db push` during active development.
+- **Rejected:** Generating migration files with `prisma migrate dev` on every schema change.
+- **Why:** Speeds up rapid schema iterations without getting blocked by migration drift prompts.
+
+## Decision 6
+
+- **Chose:** Next.js Server Component Layout Guards (`layout.tsx` role check + `redirect()`).
+- **Rejected:** Solely relying on client-side routing hooks or dedicated standalone API routing wrappers for page-level access control.
+- **Why:** Server layouts execute before page rendering, preventing unauthorized HTML payload delivery, eliminating client-side layout flashing, and keeping route protection clean and collocated.
+
+## Decision 7
+
+- **Chose:** Composite Primary Key Join Table (`ApplicationInterviewer` with `@@id([applicationId, interviewerId])`).
+- **Rejected:** Single `interviewerId` field on `Application` or unconstrained array fields.
+- **Why:** Enforces many-to-many relationship where applications can have multiple interviewers and interviewers can evaluate multiple applications across positions without duplicate records.
+
+## Decision 8
+
+- **Chose:** Server-side search, multi-field filtering, whitelisted sorting, and transactional pagination in PostgreSQL via Prisma.
+- **Rejected:** Client-side array filtering in React or introducing external search clusters (Elasticsearch / Algolia).
+- **Why:** Prevents transferring unneeded rows over the network, maintains strict interviewer authorization boundaries at the database query level, and scales efficiently for large datasets without adding operational overhead.
+
+## Decision 9
+
+- **Chose:** Direct in-memory CSV string generation via tRPC procedure (`application.exportCsv`).
+- **Rejected:** Streaming CSV responses (e.g., Node.js `stream.Readable`, Web Streams API, or chunked transfer encoding).
+- **Why:** Keeps the implementation simple, fast, and maintainable for assignment-scale candidate exports. Direct string building formats database records cleanly into an escaped CSV string returned in the JSON payload, avoiding stream pipeline overhead and complex HTTP chunk handling while ensuring only authorized records are exported.
+
+## Decision 10
+
+- **Chose:** Independent per-candidate bulk evaluation with detailed success/refusal reporting.
+- **Rejected:** Single `updateMany()` database operations or atomic transactions that roll back the entire batch if one candidate fails.
+- **Why:** Selected candidates may be at different pipeline stages. Independent evaluation allows valid pipeline advances to succeed while returning explicit refusal reasons for ineligible candidates (e.g. already HIRED or REJECTED).
+
+## Decision 11
+
+- **Chose:** Append-Only `ApplicationEvent` Table with Transactional Server-Side Writing.
+- **Rejected:** Frontend-driven history submission, mutable history events, or external event streaming.
+- **Why:** HireGrid requires an immutable audit history where nothing can be edited or deleted after the fact. Writing `ApplicationEvent` records inside the same Prisma transaction (`prisma.$transaction`) as state updates guarantees zero history drift, complete server control, and strict compliance with Requirement.
+
+## Decision 12
+
+- **Chose:** Server-Side Derived Stalled State from `stageChangedAt` with Scoped Dismissals (`StalledApplicationDismissal`).
+- **Rejected:** Persistent `stalled=true` database flags or scheduled background cron jobs.
+- **Why:** Derived state eliminates database synchronization bugs and worker overhead. Scoping dismissals to `(applicationId, stage, stageStartedAt)` ensures that when a candidate advances to a new stage, `stageChangedAt` resets naturally and the alert can reappear if the candidate later stalls in their new stage.
+
+## Decision 13
+
+- **Chose:** URL Search Parameter Filter Sync (`useSearchParams`) & Active User Definition (`isActive = true`).
+- **Rejected:** In-memory client component state for filters and online presence tracking for active users.
+- **Why:** Synchronizing candidate filter states bi-directionally with browser URL search parameters enables shareable links, bookmarking, and direct stage drill-downs from dashboard metrics. Defining active recruiters/interviewers as enabled database accounts (`isActive = true`) aligns with security audit standards without requiring complex WebSocket presence servers.
+
+## Decision 14
+
+- **Chose:** Explicit `hiredAt` Timestamping on Stage Transition & Outcomes Workspace Organization.
+- **Rejected:** Inferring hire dates from `updatedAt` or rendering hired/rejected candidates in the standard active pipeline.
+- **Why:** Populating `hiredAt` atomically inside `advanceApplicationDomain` ensures exact monthly hiring metrics without timezone or stage update ambiguity. Structuring the candidate workspace into three clear tabs (`Active Candidates`, `Hired Candidates`, `Rejected Candidates`) inside a unified layout shell provides a consistent, decluttered UX while preserving full candidate history.
+
+## Decision 15
+
+- **Chose:** Horizontal Bar Chart with Dynamic Top-N Filtering (`Top 5`, `Top 10`, `All`) and Scrollable Container.
+- **Rejected:** Fixed-width vertical column bar chart displaying all job openings simultaneously.
+- **Later reversed:** Initially built a vertical column bar chart rendering every opening at once. Reversed this as more job openings were added to the system, which caused vertical bars to crowd, category labels to overlap, and long job titles to become unreadable.
+- **Why:** Horizontal bars provide natural reading width for descriptive job titles, and Top-N sorting keeps the executive dashboard glanceable without breaking layout ergonomics as the organization scales.
 
 
 

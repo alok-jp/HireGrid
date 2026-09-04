@@ -10,8 +10,10 @@
 !.yarn/releases
 !.yarn/versions
 
-# testing
+# testing & local test scripts
 /coverage
+/tests
+/src/__tests__
 
 # next.js
 /.next/
@@ -30,8 +32,13 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# env files (preserve .env.example)
+.env
+.env*.local
+.env.development
+.env.test
+.env.production
+!.env.example
 
 # vercel
 .vercel
@@ -40,4 +47,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# generated prisma client
 /src/generated/prisma
