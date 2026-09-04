@@ -1,6 +1,6 @@
-import { getCurrentSession } from "@/lib/get-session";
 import { redirect } from "next/navigation";
 import { InterviewerCandidateWorkspace } from "@/features/applications/interviewer-candidate-workspace";
+import { getCurrentSession } from "@/lib/get-session";
 
 interface InterviewerApplicationPageProps {
   params: Promise<{
@@ -17,7 +17,10 @@ export default async function InterviewerApplicationPage({
     redirect("/login");
   }
 
-  if (session.user.role !== "INTERVIEWER" && session.user.role !== "MASTER_ADMIN") {
+  if (
+    session.user.role !== "INTERVIEWER" &&
+    session.user.role !== "MASTER_ADMIN"
+  ) {
     redirect("/");
   }
 

@@ -34,12 +34,17 @@ export const adminProcedure = protectedProcedure.use(async ({ ctx, next }) => {
   return next();
 });
 
+export const masterAdminProcedure = adminProcedure;
+
 export const recruiterProcedure = protectedProcedure.use(
   async ({ ctx, next }) => {
-    if (ctx.session.user.role !== "RECRUITER") {
+    if (
+      ctx.session.user.role !== "RECRUITER" &&
+      ctx.session.user.role !== "MASTER_ADMIN"
+    ) {
       throw new TRPCError({
         code: "FORBIDDEN",
-        message: "Only recruiter can access this",
+        message: "Recruiter or Master Admin access required",
       });
     }
 
@@ -49,10 +54,13 @@ export const recruiterProcedure = protectedProcedure.use(
 
 export const interviewerProcedure = protectedProcedure.use(
   async ({ ctx, next }) => {
-    if (ctx.session.user.role !== "INTERVIEWER") {
+    if (
+      ctx.session.user.role !== "INTERVIEWER" &&
+      ctx.session.user.role !== "MASTER_ADMIN"
+    ) {
       throw new TRPCError({
         code: "FORBIDDEN",
-        message: "Only interviewer can access this",
+        message: "Interviewer or Master Admin access required",
       });
     }
 

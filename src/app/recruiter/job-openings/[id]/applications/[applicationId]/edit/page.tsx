@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { ApplicationForm } from "@/features/applications/application-form";
-import { createCaller } from "@/trpc/routers/_app";
 import { createTRPCContext } from "@/trpc/context";
+import { createCaller } from "@/trpc/routers/_app";
 
 export default async function EditApplicationPage({
   params,
@@ -13,7 +13,9 @@ export default async function EditApplicationPage({
   const ctx = await createTRPCContext();
   const caller = createCaller(ctx);
 
-  let application;
+  let application:
+    | Awaited<ReturnType<typeof caller.application.getById>>
+    | undefined;
 
   try {
     application = await caller.application.getById({ id: applicationId });

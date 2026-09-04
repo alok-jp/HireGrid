@@ -23,6 +23,9 @@ Answer each of these, in your own words.
 - **Session 10: Interview Scheduling & Recruiter Dashboard**: Created `Interview` & `InterviewInterviewer` models, server-side double-booking collision algorithm (`checkDoubleBookingCollision`), scheduled interview widget, scheduling/rescheduling dialog, `dashboard.getStats` aggregator procedure, and responsive Recharts visualization widgets (`DashboardMetrics`).
 - **Session 11: Hosted k6 Performance & Concurrency Suite**: Created full k6 load-testing suite (`tests/load/config.js`, `applications.js`, `dashboard.js`, `pipeline.js`, `interviews.js`, `csv-export.js`), timestamped HTML summaries in `tests/load/results/`, and performance analysis report in `docs/performance.md`.
 - **Session 12: Immutable Application History Timeline (Requirement #9)**: Added `ApplicationEventType` enum and `ApplicationEvent` model to Prisma schema, implemented transactional server-side event creation inside `prisma.$transaction` across application creation, stage advancement, rejection, reinstatement, feedback submission, and interview scheduling. Built append-only timeline component (`ApplicationTimeline`), enforced strict read authorization, and created unit/integration test suite (`src/__tests__/application-history.test.ts`).
+- **Session 13: Stalled Application Alerts & Separate Reject UI (Requirement #10)**: Added `stageChangedAt` to `Application` and created `StalledApplicationDismissal` model scoped to `(applicationId, stage, stageStartedAt)`. Built `application.getStalledAlerts`, `application.getStalledCount`, and `application.dismissStalledAlert` procedures, live navigation alert count badge in `AppHeader`, dedicated `/recruiter/alerts` view (`StalledAlertsView`), and refactored candidate workspace separating Reject into a secondary dropdown menu with a mandatory confirmation modal.
+- **Session 14: Dashboard Drill-Down, Dedicated Rejected UI, Admin Metrics & Cache Audit**: Added `isActive` to `User` model, updated `dashboard.getStats` to compute active recruiters and active interviewers, updated Master Admin overview with active user metrics, made recruiter dashboard stage cards interactive with direct drill-down links to `/recruiter/candidates?stage=STAGE`, synchronized candidate filters bi-directionally with browser URL search parameters (`useSearchParams`), created dedicated Rejected Candidates view (`/recruiter/candidates/rejected`), added rejected candidate status banner, audited mutation cache invalidation (`invalidateQueries`), and added automated test suite (`src/__tests__/dashboard-and-rejected.test.ts`).
+- **Session 15: Hired Timestamping, Historical Backfill, Outcomes Workspace & Admin Directory Overview**: Updated `advanceApplicationDomain` to atomically set `hiredAt = now` on `OFFER -> HIRED` stage transitions. Created DB backfill script `src/lib/backfill-hires.ts` populating missing `hiredAt` timestamps for existing hired records. Re-architected stage distribution into **Active Pipeline** vs **Terminal Outcomes**, created `/recruiter/candidates/hired` route, added workspace tabs (`Active Candidates`, `Hired Candidates`, `Rejected Candidates`) inside a unified layout shell, added `user.getTeamMembers` procedure protected by `masterAdminProcedure`, rendered Recruiter & Interviewer team tables with emails on Admin Overview, and added automated test suite (`src/__tests__/hired-and-admin.test.ts`).
 
 ---
 
@@ -38,26 +41,31 @@ Answer each of these, in your own words.
 8. **Interview Scheduling & Dashboard eighth**: Built time-slotted interview scheduling with double-booking collision protection and recruiter metrics dashboard with Recharts visualizations.
 9. **Concurrency Safety & Audit Hardening ninth**: Hardened mutations with atomic conditional SQL updates and structured audit event logging.
 10. **Immutable History Timeline tenth**: Added `ApplicationEvent` model, transactional event logging across domain procedures, and append-only visual timeline.
+11. **Stalled Application Alerts eleventh**: Added operational stage timer, scoped dismissals, live navigation alert count badge, and dedicated alerts page.
+12. **Dashboard Drill-Down & Cache Audit twelfth**: Added interactive stage drill-down cards, active user metric cards, URL filter synchronization, dedicated rejected candidates view, and complete mutation cache invalidation audit.
+13. **Hired Timestamping & Admin Directory thirteenth**: Populated `hiredAt` on hire transitions, backfilled historical data, separated Active Pipeline vs Terminal Outcomes UX, created Hired Candidates view, and built Master Admin directory tables.
 
 ---
 
 ## What did you estimate versus what it actually took?
 
 - **Database & Auth Setup**: Estimated 30 mins; took ~25 mins.
-- **UI & Routing**: Estimated 45 mins; took ~60 mins due to fixing missing API routes and linter formats.
+- **UI & Routing**: Estimated 45 mins; took ~60 mins due to fixing missing API routes.
 - **SMTP Migration & Performance**: Estimated 30 mins; took ~30 mins.
 - **Job Openings & Applications**: Estimated 60 mins; took ~55 mins.
 - **UI Redesign & Decluttering**: Estimated 40 mins; took ~35 mins.
-- **Interview Panel & Security**: Estimated 45 mins; took ~40 mins.
+- **Interview Panel & Security**: Estimated 50 mins; took ~70 mins. 
 - **Candidate Search & Pagination**: Estimated 50 mins; took ~60 mins.
-- **Bulk Actions & CSV Export**: Estimated 45 mins; took ~40 mins.
-- **Interview Scheduling & Dashboard**: Estimated 60 mins; took ~55 mins.
+- **Bulk Actions & CSV Export**: Estimated 45 mins; took ~90 mins.
+- **Interview Scheduling & Dashboard**: Estimated 60 mins; took ~100 mins.
 - **Concurrency & Audit Hardening**: Estimated 45 mins; took ~40 mins.
-- **Immutable History Timeline**: Estimated 45 mins; took ~40 mins.
+- **Immutable History Timeline**: Estimated 60 mins; took ~100 mins.
+- **Stalled Application Alerts**: Estimated 60 mins; took ~100 mins.
+- **Dashboard Drill-Down & Cache Audit**: Estimated 50 mins; took ~45 mins.
+- **Hired Timestamping & Admin Directory**: Estimated 45 mins; took ~40 mins.
 
 ---
 
 ## What did you cut when you ran short?
 
 - **Streamed CSV Exports**: Avoided introducing Node.js readable streams or Web Streams API for CSV export. Using direct in-memory string formatting inside the server procedure kept the CSV export simple, deterministic, and fast while avoiding stream pipeline complexity.
-- **Stalled Application Alerts (Requirement 10)**: Intentionally deferred per explicit project scope constraints.

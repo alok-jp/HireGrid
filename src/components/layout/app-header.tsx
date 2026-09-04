@@ -1,18 +1,18 @@
 "use client";
 
+import { AlertCircle, ChevronDown, LogOut } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { toast } from "sonner";
 import {
   DropdownMenu,
-  DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown, LogOut } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { trpc } from "@/trpc/client";
 
 const NAV = {
   admin: [
@@ -23,23 +23,33 @@ const NAV = {
     { href: "/recruiter", label: "Dashboard" },
     { href: "/recruiter/job-openings", label: "Job Openings" },
     { href: "/recruiter/candidates", label: "Candidates" },
+    { href: "/recruiter/alerts", label: "Alerts", isAlerts: true },
     { href: "/recruiter/job-openings/archived", label: "Archived" },
   ],
-  interviewer: [
-    { href: "/interviewer", label: "My Applications" },
-  ],
+  interviewer: [{ href: "/interviewer", label: "My Applications" }],
 };
 
 export function AppHeader({
-  role,
+  navRole,
   user,
 }: {
-  role: "admin" | "recruiter" | "interviewer";
+  navRole: "admin" | "recruiter" | "interviewer";
   user: { name: string; email: string; role: string };
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const links = NAV[role] || [];
+  const links = NAV[navRole] || [];
+
+  const isRecruiterOrAdmin = navRole === "recruiter" || navRole === "admin";
+  const { data: stalledCountData } = trpc.application.getStalledCount.useQuery(
+    undefined,
+    {
+      enabled: isRecruiterOrAdmin,
+      refetchInterval: 30000,
+    },
+  );
+
+  const stalledCount = stalledCountData?.count ?? 0;
 
   const handleSignOut = async () => {
     try {
@@ -52,27 +62,40 @@ export function AppHeader({
     }
   };
 
-  const initial = user.name ? user.name.charAt(0).toUpperCase() : user.email.charAt(0).toUpperCase();
+  const initial = user.name
+    ? user.name.charAt(0).toUpperCase()
+    : user.email.charAt(0).toUpperCase();
 
   return (
     <header className="h-[60px] flex items-center justify-between px-6 border-b border-[var(--border-subtle)] bg-[var(--surface-0)] sticky top-0 z-40">
       <div className="flex items-center gap-8">
         <span className="text-title text-[var(--text-primary)]">
-          {role === "admin" ? "Admin Portal" : "Hiring Pipeline"}
+          {navRole === "admin" ? "Admin Portal" : "Hiring Pipeline"}
         </span>
 
         <nav className="flex items-center gap-6">
           {links.map((l) => {
             const active = pathname === l.href;
+            const showAlertBadge =
+              (l as { isAlerts?: boolean }).isAlerts && stalledCount > 0;
+
             return (
               <Link
                 key={l.href}
                 href={l.href}
-                className={`text-sm font-medium transition-colors relative py-1 ${
-                  active ? "text-[var(--text-primary)] font-semibold" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                className={`text-sm font-medium transition-colors relative py-1 flex items-center gap-1.5 ${
+                  active
+                    ? "text-[var(--text-primary)] font-semibold"
+                    : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                 }`}
               >
-                {l.label}
+                <span>{l.label}</span>
+                {showAlertBadge && (
+                  <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-white text-[11px] font-bold animate-pulse flex items-center gap-0.5">
+                    <AlertCircle className="w-3 h-3" />
+                    <span>{stalledCount}</span>
+                  </span>
+                )}
                 {active && (
                   <span className="absolute left-0 right-0 -bottom-[19px] h-[2px] bg-[var(--accent)]" />
                 )}

@@ -1,6 +1,6 @@
+import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { InviteForm } from "@/features/invitations/invite-form";
-import { ArrowLeft } from "lucide-react";
 
 export default function InvitationsPage() {
   return (

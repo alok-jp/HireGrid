@@ -1,12 +1,12 @@
-import { Suspense } from "react";
+import { ArrowLeft, Building2, Pencil, Plus } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { createCaller } from "@/trpc/routers/_app";
-import { createTRPCContext } from "@/trpc/context";
-import { ApplicationList } from "@/features/applications/application-list";
-import { ApplicationSkeleton } from "@/components/ui/skeletons";
+import { Suspense } from "react";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Building2, Pencil, Plus } from "lucide-react";
+import { ApplicationSkeleton } from "@/components/ui/skeletons";
+import { ApplicationList } from "@/features/applications/application-list";
+import { createTRPCContext } from "@/trpc/context";
+import { createCaller } from "@/trpc/routers/_app";
 
 export default async function JobOpeningDetailPage({
   params,
@@ -18,7 +18,9 @@ export default async function JobOpeningDetailPage({
   const ctx = await createTRPCContext();
   const caller = createCaller(ctx);
 
-  let jobOpening;
+  let jobOpening:
+    | Awaited<ReturnType<typeof caller.jobOpening.getById>>
+    | undefined;
 
   try {
     jobOpening = await caller.jobOpening.getById({ id });
@@ -55,7 +57,9 @@ export default async function JobOpeningDetailPage({
               <Building2 className="h-3.5 w-3.5" />
               <span>{jobOpening.department}</span>
               <span>•</span>
-              <span>Created {new Date(jobOpening.createdAt).toLocaleDateString()}</span>
+              <span>
+                Created {new Date(jobOpening.createdAt).toLocaleDateString()}
+              </span>
             </div>
           </div>
 

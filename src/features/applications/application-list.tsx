@@ -1,20 +1,26 @@
 "use client";
 
+import { formatDistanceToNow } from "date-fns";
+import {
+  ExternalLink,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  UserCheck,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { trpc } from "@/trpc/client";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ApplicationStageTracker } from "@/features/applications/application-stage";
 import { ApplicationActions } from "@/features/applications/application-actions";
+import { ApplicationStageTracker } from "@/features/applications/application-stage";
 import { InterviewPanel } from "@/features/applications/interview-panel";
-import { Plus, Pencil, MoreHorizontal, UserCheck, ExternalLink } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
-import { ApplicationStage } from "@/generated/prisma/enums";
+import type { ApplicationStage } from "@/generated/prisma/enums";
+import { trpc } from "@/trpc/client";
 
 interface ApplicationListProps {
   jobOpeningId: string;
@@ -30,7 +36,10 @@ export function ApplicationList({ jobOpeningId }: ApplicationListProps) {
     return (
       <div className="space-y-3">
         {[1, 2, 3].map((item) => (
-          <div key={item} className="p-4 rounded-md border bg-[var(--surface-1)] space-y-3">
+          <div
+            key={item}
+            className="p-4 rounded-md border bg-[var(--surface-1)] space-y-3"
+          >
             <div className="skeleton w-36 h-4" />
             <div className="skeleton w-full h-8" />
           </div>
@@ -58,7 +67,9 @@ export function ApplicationList({ jobOpeningId }: ApplicationListProps) {
       {!data || data.length === 0 ? (
         <div className="py-10 text-center border border-dashed border-[var(--border-subtle)] rounded-md">
           <UserCheck className="h-8 w-8 text-[var(--text-tertiary)] mx-auto mb-2" />
-          <p className="text-body font-semibold">No candidate applications yet</p>
+          <p className="text-body font-semibold">
+            No candidate applications yet
+          </p>
           <p className="text-meta mt-1 mb-4">
             Add candidates to begin tracking them through the hiring stages.
           </p>
@@ -96,9 +107,12 @@ export function ApplicationList({ jobOpeningId }: ApplicationListProps) {
                       <span className="text-meta">· {app.email}</span>
                     </div>
                     <div className="text-meta text-xs">
-                      <span className="font-semibold">{app.source}</span> · Applied {timeAgo}
+                      <span className="font-semibold">{app.source}</span> ·
+                      Applied {timeAgo}
                       {app.notes ? (
-                        <span className="ml-2 text-[var(--text-tertiary)] italic">— {app.notes}</span>
+                        <span className="ml-2 text-[var(--text-tertiary)] italic">
+                          — {app.notes}
+                        </span>
                       ) : null}
                     </div>
                   </div>
@@ -109,7 +123,8 @@ export function ApplicationList({ jobOpeningId }: ApplicationListProps) {
                       application={{
                         id: app.id,
                         stage: app.stage as ApplicationStage,
-                        stageBeforeRejection: app.stageBeforeRejection as ApplicationStage | null,
+                        stageBeforeRejection:
+                          app.stageBeforeRejection as ApplicationStage | null,
                       }}
                     />
 
@@ -147,7 +162,9 @@ export function ApplicationList({ jobOpeningId }: ApplicationListProps) {
                 {/* Pipeline Visual Step Tracker */}
                 <ApplicationStageTracker
                   stage={app.stage as ApplicationStage}
-                  stageBeforeRejection={app.stageBeforeRejection as ApplicationStage | null}
+                  stageBeforeRejection={
+                    app.stageBeforeRejection as ApplicationStage | null
+                  }
                 />
 
                 {/* Interview Panel Assignment Section */}

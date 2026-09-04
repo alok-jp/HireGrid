@@ -12,7 +12,9 @@ export const PIPELINE_ORDER: ApplicationStage[] = [
  * Calculates the next stage in the pipeline.
  * Returns null if the stage cannot be advanced further (HIRED or REJECTED).
  */
-export function getNextStage(currentStage: ApplicationStage): ApplicationStage | null {
+export function getNextStage(
+  currentStage: ApplicationStage,
+): ApplicationStage | null {
   switch (currentStage) {
     case ApplicationStage.APPLIED:
       return ApplicationStage.SCREENING;
@@ -39,10 +41,14 @@ export function canAdvance(currentStage: ApplicationStage): boolean {
 
 /**
  * Checks if an application can be rejected.
- * Rejection is allowed from any stage except already REJECTED.
+ * Rejection is allowed from any active pipeline stage.
+ * REJECTED (already rejected) and HIRED (terminal outcome) cannot be rejected again.
  */
 export function canReject(currentStage: ApplicationStage): boolean {
-  return currentStage !== ApplicationStage.REJECTED;
+  return (
+    currentStage !== ApplicationStage.REJECTED &&
+    currentStage !== ApplicationStage.HIRED
+  );
 }
 
 /**

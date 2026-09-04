@@ -1,9 +1,9 @@
 "use client";
 
-import { ApplicationStage } from "@/generated/prisma/enums";
-import { PIPELINE_ORDER } from "@/lib/application-stage";
 import { Check, XCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { ApplicationStage } from "@/generated/prisma/enums";
+import { PIPELINE_ORDER } from "@/lib/application-stage";
 
 interface ApplicationStageTrackerProps {
   stage: ApplicationStage | string;
@@ -26,13 +26,17 @@ export function ApplicationStageTracker({
               REJECTED
             </span>
             {stageBeforeRejection && (
-              <Badge variant="outline" className="text-[10px] border-red-300 text-red-700">
+              <Badge
+                variant="outline"
+                className="text-[10px] border-red-300 text-red-700"
+              >
                 Was at {stageBeforeRejection}
               </Badge>
             )}
           </div>
           <p className="text-xs text-red-600/80 dark:text-red-400/80 mt-0.5">
-            Application is currently rejected. You can reinstate it back to the {stageBeforeRejection || "previous"} stage.
+            Application is currently rejected. You can reinstate it back to the{" "}
+            {stageBeforeRejection || "previous"} stage.
           </p>
         </div>
       </div>
@@ -57,8 +61,8 @@ export function ApplicationStageTracker({
                     isCurrent
                       ? "bg-[var(--accent)] text-white shadow-xs ring-2 ring-[var(--accent)]/30"
                       : isPassed
-                      ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
-                      : "bg-[var(--surface-2)] text-[var(--text-tertiary)]"
+                        ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
+                        : "bg-[var(--surface-2)] text-[var(--text-tertiary)]"
                   }`}
                 >
                   {isPassed ? <Check className="w-3.5 h-3.5" /> : index + 1}
@@ -68,8 +72,8 @@ export function ApplicationStageTracker({
                     isCurrent
                       ? "text-[var(--accent)]"
                       : isPassed
-                      ? "text-emerald-700 dark:text-emerald-400"
-                      : "text-[var(--text-tertiary)]"
+                        ? "text-emerald-700 dark:text-emerald-400"
+                        : "text-[var(--text-tertiary)]"
                   }`}
                 >
                   {s}

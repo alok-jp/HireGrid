@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { JobOpeningForm } from "@/features/job-openings/job-opening-form";
-import { createCaller } from "@/trpc/routers/_app";
 import { createTRPCContext } from "@/trpc/context";
+import { createCaller } from "@/trpc/routers/_app";
 
 export default async function EditJobOpeningPage({
   params,
@@ -13,7 +13,9 @@ export default async function EditJobOpeningPage({
   const ctx = await createTRPCContext();
   const caller = createCaller(ctx);
 
-  let jobOpening;
+  let jobOpening:
+    | Awaited<ReturnType<typeof caller.jobOpening.getById>>
+    | undefined;
 
   try {
     jobOpening = await caller.jobOpening.getById({ id });

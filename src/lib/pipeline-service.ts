@@ -1,10 +1,18 @@
 import { TRPCError } from "@trpc/server";
-import { prisma } from "@/lib/prisma";
+import {
+  ApplicationEventType,
+  ApplicationStage,
+  InterviewStatus,
+} from "@/generated/prisma/enums";
 import { getNextStage } from "@/lib/application-stage";
-import { ApplicationStage, InterviewStatus, ApplicationEventType } from "@/generated/prisma/enums";
 import { logAuditEvent } from "@/lib/logger";
+import { prisma } from "@/lib/prisma";
 
-export async function advanceApplicationDomain(id: string, userId: string, userRole?: string) {
+export async function advanceApplicationDomain(
+  id: string,
+  userId: string,
+  userRole?: string,
+) {
   const application = await prisma.application.findUnique({
     where: { id },
   });
@@ -26,7 +34,8 @@ export async function advanceApplicationDomain(id: string, userId: string, userR
   if (application.stage === ApplicationStage.HIRED) {
     throw new TRPCError({
       code: "BAD_REQUEST",
-      message: "Application is already at the HIRED stage.",
+      message:
+        "Application is already at the HIRED stage and cannot be advanced further.",
     });
   }
 
@@ -41,7 +50,10 @@ export async function advanceApplicationDomain(id: string, userId: string, userR
   }
 
   // BUSINESS RULE: INTERVIEW -> OFFER requires at least 1 COMPLETED interview
-  if (oldStage === ApplicationStage.INTERVIEW && nextStage === ApplicationStage.OFFER) {
+  if (
+    oldStage === ApplicationStage.INTERVIEW &&
+    nextStage === ApplicationStage.OFFER
+  ) {
     const completedCount = await prisma.interview.count({
       where: {
         applicationId: id,
@@ -52,45 +64,62 @@ export async function advanceApplicationDomain(id: string, userId: string, userR
     if (completedCount === 0) {
       throw new TRPCError({
         code: "BAD_REQUEST",
-        message: "At least one completed interview is required before moving candidate to OFFER stage.",
+        message:
+          "At least one completed interview is required before moving candidate to OFFER stage.",
       });
     }
   }
 
-  // TRANSACTIONAL ATOMIC CONDITIONAL UPDATE + EVENT CREATION
-  const updated = await prisma.$transaction(async (tx) => {
-    const result = await tx.application.updateMany({
-      where: {
-        id,
-        stage: oldStage,
-      },
-      data: {
-        stage: nextStage,
-        ...(nextStage === ApplicationStage.HIRED ? { hiredAt: new Date() } : {}),
-      },
-    });
+  const now = new Date();
 
-    if (result.count === 0) {
-      throw new TRPCError({
-        code: "CONFLICT",
-        message: "This application was modified by another user concurrently. Please refresh.",
+  // TRANSACTIONAL ATOMIC CONDITIONAL UPDATE + EVENT CREATION + HIRED_AT SETTING
+  const updated = await prisma.$transaction(
+    async (tx) => {
+      const result = await tx.application.updateMany({
+        where: {
+          id,
+          stage: oldStage,
+        },
+        data: {
+          stage: nextStage,
+          stageChangedAt: now,
+          ...(nextStage === ApplicationStage.HIRED
+            ? { hiredAt: application.hiredAt ?? now }
+            : {}),
+        },
       });
-    }
 
-    await tx.applicationEvent.create({
-      data: {
-        applicationId: id,
-        type: ApplicationEventType.STAGE_CHANGED,
-        actorId: userId,
-        oldStage,
-        newStage: nextStage,
-      },
-    });
+      if (result.count === 0) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message:
+            "This application was modified by another user concurrently. Please refresh.",
+        });
+      }
 
-    return await tx.application.findUnique({
-      where: { id },
+      await tx.applicationEvent.create({
+        data: {
+          applicationId: id,
+          type: ApplicationEventType.STAGE_CHANGED,
+          actorId: userId,
+          oldStage,
+          newStage: nextStage,
+        },
+      });
+
+      return await tx.application.findUnique({
+        where: { id },
+      });
+    },
+    { timeout: 20000 },
+  );
+
+  if (!updated) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Application not found after update.",
     });
-  });
+  }
 
   logAuditEvent({
     action: "STAGE_ADVANCE",
@@ -103,10 +132,14 @@ export async function advanceApplicationDomain(id: string, userId: string, userR
     },
   });
 
-  return updated!;
+  return updated;
 }
 
-export async function rejectApplicationDomain(id: string, userId: string, userRole?: string) {
+export async function rejectApplicationDomain(
+  id: string,
+  userId: string,
+  userRole?: string,
+) {
   const application = await prisma.application.findUnique({
     where: { id },
   });
@@ -125,42 +158,63 @@ export async function rejectApplicationDomain(id: string, userId: string, userRo
     });
   }
 
+  if (application.stage === ApplicationStage.HIRED) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message:
+        "Hired candidates cannot be rejected. HIRED is a terminal outcome.",
+    });
+  }
+
   const oldStage = application.stage as ApplicationStage;
+  const now = new Date();
 
-  // TRANSACTIONAL ATOMIC CONDITIONAL UPDATE + EVENT CREATION
-  const updated = await prisma.$transaction(async (tx) => {
-    const result = await tx.application.updateMany({
-      where: {
-        id,
-        stage: oldStage,
-      },
-      data: {
-        stage: ApplicationStage.REJECTED,
-        stageBeforeRejection: oldStage,
-      },
-    });
-
-    if (result.count === 0) {
-      throw new TRPCError({
-        code: "CONFLICT",
-        message: "This application was modified by another user concurrently. Please refresh.",
+  // TRANSACTIONAL ATOMIC CONDITIONAL UPDATE + EVENT CREATION + STAGE_CHANGED_AT RESET
+  const updated = await prisma.$transaction(
+    async (tx) => {
+      const result = await tx.application.updateMany({
+        where: {
+          id,
+          stage: oldStage,
+        },
+        data: {
+          stage: ApplicationStage.REJECTED,
+          stageBeforeRejection: oldStage,
+          stageChangedAt: now,
+        },
       });
-    }
 
-    await tx.applicationEvent.create({
-      data: {
-        applicationId: id,
-        type: ApplicationEventType.REJECTED,
-        actorId: userId,
-        oldStage,
-        newStage: ApplicationStage.REJECTED,
-      },
-    });
+      if (result.count === 0) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message:
+            "This application was modified by another user concurrently. Please refresh.",
+        });
+      }
 
-    return await tx.application.findUnique({
-      where: { id },
+      await tx.applicationEvent.create({
+        data: {
+          applicationId: id,
+          type: ApplicationEventType.REJECTED,
+          actorId: userId,
+          oldStage,
+          newStage: ApplicationStage.REJECTED,
+        },
+      });
+
+      return await tx.application.findUnique({
+        where: { id },
+      });
+    },
+    { timeout: 20000 },
+  );
+
+  if (!updated) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Application not found after update.",
     });
-  });
+  }
 
   logAuditEvent({
     action: "STAGE_REJECT",
@@ -173,10 +227,14 @@ export async function rejectApplicationDomain(id: string, userId: string, userRo
     },
   });
 
-  return updated!;
+  return updated;
 }
 
-export async function reinstateApplicationDomain(id: string, userId: string, userRole?: string) {
+export async function reinstateApplicationDomain(
+  id: string,
+  userId: string,
+  userRole?: string,
+) {
   const application = await prisma.application.findUnique({
     where: { id },
   });
@@ -199,41 +257,54 @@ export async function reinstateApplicationDomain(id: string, userId: string, use
   }
 
   const targetStage = application.stageBeforeRejection as ApplicationStage;
+  const now = new Date();
 
-  // TRANSACTIONAL ATOMIC CONDITIONAL UPDATE + EVENT CREATION
-  const updated = await prisma.$transaction(async (tx) => {
-    const result = await tx.application.updateMany({
-      where: {
-        id,
-        stage: ApplicationStage.REJECTED,
-      },
-      data: {
-        stage: targetStage,
-        stageBeforeRejection: null,
-      },
-    });
-
-    if (result.count === 0) {
-      throw new TRPCError({
-        code: "CONFLICT",
-        message: "This application was modified by another user concurrently. Please refresh.",
+  // TRANSACTIONAL ATOMIC CONDITIONAL UPDATE + EVENT CREATION + STAGE_CHANGED_AT RESET
+  const updated = await prisma.$transaction(
+    async (tx) => {
+      const result = await tx.application.updateMany({
+        where: {
+          id,
+          stage: ApplicationStage.REJECTED,
+        },
+        data: {
+          stage: targetStage,
+          stageBeforeRejection: null,
+          stageChangedAt: now,
+        },
       });
-    }
 
-    await tx.applicationEvent.create({
-      data: {
-        applicationId: id,
-        type: ApplicationEventType.REINSTATED,
-        actorId: userId,
-        oldStage: ApplicationStage.REJECTED,
-        newStage: targetStage,
-      },
-    });
+      if (result.count === 0) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message:
+            "This application was modified by another user concurrently. Please refresh.",
+        });
+      }
 
-    return await tx.application.findUnique({
-      where: { id },
+      await tx.applicationEvent.create({
+        data: {
+          applicationId: id,
+          type: ApplicationEventType.REINSTATED,
+          actorId: userId,
+          oldStage: ApplicationStage.REJECTED,
+          newStage: targetStage,
+        },
+      });
+
+      return await tx.application.findUnique({
+        where: { id },
+      });
+    },
+    { timeout: 20000 },
+  );
+
+  if (!updated) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Application not found after update.",
     });
-  });
+  }
 
   logAuditEvent({
     action: "STAGE_REINSTATE",
@@ -246,5 +317,5 @@ export async function reinstateApplicationDomain(id: string, userId: string, use
     },
   });
 
-  return updated!;
+  return updated;
 }

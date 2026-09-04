@@ -1,22 +1,22 @@
 "use client";
 
-import Link from "next/link";
-import { trpc } from "@/trpc/client";
-import { ApplicationStageTracker } from "@/features/applications/application-stage";
-import { InterviewFeedback } from "@/features/applications/interview-feedback";
-import { ApplicationTimeline } from "@/features/applications/application-timeline";
-import { InterviewSection } from "@/features/interviews/interview-section";
+import { format, formatDistanceToNow } from "date-fns";
 import {
   ArrowLeft,
   Briefcase,
   Building2,
   Calendar,
-  Mail,
   FileText,
+  Mail,
   UserCheck,
 } from "lucide-react";
-import { formatDistanceToNow, format } from "date-fns";
-import { ApplicationStage } from "@/generated/prisma/enums";
+import Link from "next/link";
+import { ApplicationStageTracker } from "@/features/applications/application-stage";
+import { ApplicationTimeline } from "@/features/applications/application-timeline";
+import { InterviewFeedback } from "@/features/applications/interview-feedback";
+import { InterviewSection } from "@/features/interviews/interview-section";
+import type { ApplicationStage } from "@/generated/prisma/enums";
+import { trpc } from "@/trpc/client";
 
 interface InterviewerCandidateWorkspaceProps {
   applicationId: string;
@@ -42,8 +42,13 @@ export function InterviewerCandidateWorkspace({
   if (!application) {
     return (
       <div className="py-12 text-center">
-        <p className="text-body font-semibold">Candidate application not found or not assigned to you.</p>
-        <Link href="/interviewer" className="text-xs text-[var(--accent)] hover:underline mt-2 inline-block">
+        <p className="text-body font-semibold">
+          Candidate application not found or not assigned to you.
+        </p>
+        <Link
+          href="/interviewer"
+          className="text-xs text-[var(--accent)] hover:underline mt-2 inline-block"
+        >
           Return to My Assigned Applications
         </Link>
       </div>
@@ -53,7 +58,10 @@ export function InterviewerCandidateWorkspace({
   const timeAgo = formatDistanceToNow(new Date(application.createdAt), {
     addSuffix: true,
   });
-  const exactDate = format(new Date(application.createdAt), "MMMM d, yyyy 'at' h:mm a");
+  const exactDate = format(
+    new Date(application.createdAt),
+    "MMMM d, yyyy 'at' h:mm a",
+  );
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto py-6 px-4">
@@ -126,7 +134,9 @@ export function InterviewerCandidateWorkspace({
           </span>
           <ApplicationStageTracker
             stage={application.stage as ApplicationStage}
-            stageBeforeRejection={application.stageBeforeRejection as ApplicationStage | null}
+            stageBeforeRejection={
+              application.stageBeforeRejection as ApplicationStage | null
+            }
           />
         </div>
       </div>

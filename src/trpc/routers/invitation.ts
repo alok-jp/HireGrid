@@ -1,5 +1,5 @@
+import crypto from "node:crypto";
 import { TRPCError } from "@trpc/server";
-import crypto from "crypto";
 import { z } from "zod";
 import { sendInvitationEmail } from "@/lib/email";
 import { prisma } from "@/lib/prisma";
@@ -14,7 +14,6 @@ export const invitationRouter = {
   create: adminProcedure
     .input(createInvitationSchema)
     .mutation(async ({ input, ctx }) => {
-      
       const existingUser = await prisma.user.findUnique({
         where: { email: input.email },
       });
@@ -35,11 +34,7 @@ export const invitationRouter = {
       const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
 
       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-      const invitationUrl = `${process.env.NEXT_PUBLIC_APP_URL}/invite/${token}`;
-
-      console.log(invitationUrl);
-
-      
+      const invitationUrl = `${process.env.APP_URL}/invite/${token}`;
       try {
         await sendInvitationEmail({
           email: input.email,

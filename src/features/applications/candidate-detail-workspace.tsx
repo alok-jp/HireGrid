@@ -1,26 +1,28 @@
 "use client";
 
-import Link from "next/link";
-import { trpc } from "@/trpc/client";
-import { Button } from "@/components/ui/button";
-import { ApplicationStageTracker } from "@/features/applications/application-stage";
-import { ApplicationActions } from "@/features/applications/application-actions";
-import { InterviewPanel } from "@/features/applications/interview-panel";
-import { InterviewFeedback } from "@/features/applications/interview-feedback";
-import { ApplicationTimeline } from "@/features/applications/application-timeline";
-import { InterviewSection } from "@/features/interviews/interview-section";
+import { format, formatDistanceToNow } from "date-fns";
 import {
+  AlertTriangle,
   ArrowLeft,
   Briefcase,
   Building2,
   Calendar,
+  CheckCircle2,
   Edit,
-  Mail,
-  AlertTriangle,
   FileText,
+  Mail,
+  XCircle,
 } from "lucide-react";
-import { formatDistanceToNow, format } from "date-fns";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { ApplicationActions } from "@/features/applications/application-actions";
+import { ApplicationStageTracker } from "@/features/applications/application-stage";
+import { ApplicationTimeline } from "@/features/applications/application-timeline";
+import { InterviewFeedback } from "@/features/applications/interview-feedback";
+import { InterviewPanel } from "@/features/applications/interview-panel";
+import { InterviewSection } from "@/features/interviews/interview-section";
 import { ApplicationStage } from "@/generated/prisma/enums";
+import { trpc } from "@/trpc/client";
 
 interface CandidateDetailWorkspaceProps {
   applicationId: string;
@@ -33,15 +35,16 @@ export function CandidateDetailWorkspace({
     id: applicationId,
   });
 
-  const { data: duplicateCheck } = trpc.application.checkDuplicateEmail.useQuery(
-    {
-      email: application?.email ?? "",
-      excludeApplicationId: applicationId,
-    },
-    {
-      enabled: !!application?.email,
-    },
-  );
+  const { data: duplicateCheck } =
+    trpc.application.checkDuplicateEmail.useQuery(
+      {
+        email: application?.email ?? "",
+        excludeApplicationId: applicationId,
+      },
+      {
+        enabled: !!application?.email,
+      },
+    );
 
   if (isLoading) {
     return (
@@ -56,7 +59,9 @@ export function CandidateDetailWorkspace({
   if (!application) {
     return (
       <div className="py-12 text-center">
-        <p className="text-body font-semibold">Candidate application not found</p>
+        <p className="text-body font-semibold">
+          Candidate application not found
+        </p>
       </div>
     );
   }
@@ -64,7 +69,15 @@ export function CandidateDetailWorkspace({
   const timeAgo = formatDistanceToNow(new Date(application.createdAt), {
     addSuffix: true,
   });
-  const exactDate = format(new Date(application.createdAt), "MMMM d, yyyy 'at' h:mm a");
+  const exactDate = format(
+    new Date(application.createdAt),
+    "MMMM d, yyyy 'at' h:mm a",
+  );
+  const isRejected = application.stage === ApplicationStage.REJECTED;
+  const isHired = application.stage === ApplicationStage.HIRED;
+  const hiredDateStr = application.hiredAt
+    ? format(new Date(application.hiredAt), "MMMM d, yyyy")
+    : null;
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto py-6 px-4">
@@ -91,11 +104,51 @@ export function CandidateDetailWorkspace({
             application={{
               id: application.id,
               stage: application.stage as ApplicationStage,
-              stageBeforeRejection: application.stageBeforeRejection as ApplicationStage | null,
+              candidateName: application.candidateName,
+              stageBeforeRejection:
+                application.stageBeforeRejection as ApplicationStage | null,
             }}
           />
         </div>
       </div>
+
+      {/* Prominent Hired Status Banner */}
+      {isHired && (
+        <div className="p-4 rounded-md bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between gap-4 text-xs text-emerald-700 dark:text-emerald-300 shadow-xs">
+          <div className="flex items-center gap-3">
+            <CheckCircle2 className="w-6 h-6 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <div>
+              <span className="font-bold text-sm block">
+                Candidate Successfully Hired
+              </span>
+              <span className="text-xs text-[var(--text-secondary)]">
+                This candidate has completed all hiring pipeline stages and was
+                hired{hiredDateStr ? ` on ${hiredDateStr}` : ""}.
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Prominent Rejected Status Banner */}
+      {isRejected && (
+        <div className="p-4 rounded-md bg-rose-500/10 border border-rose-500/30 flex items-center justify-between gap-4 text-xs text-rose-700 dark:text-rose-300 shadow-xs">
+          <div className="flex items-center gap-3">
+            <XCircle className="w-6 h-6 text-rose-600 dark:text-rose-400 shrink-0" />
+            <div>
+              <span className="font-bold text-sm block">
+                Application Marked as Rejected
+              </span>
+              <span className="text-xs text-[var(--text-secondary)]">
+                Previously in{" "}
+                <strong>{application.stageBeforeRejection || "APPLIED"}</strong>{" "}
+                stage. Reinstating will restore this candidate back to their
+                exact pre-rejection stage.
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Duplicate Candidate Warning Banner if duplicate exists */}
       {duplicateCheck?.isDuplicate && (
@@ -163,7 +216,9 @@ export function CandidateDetailWorkspace({
           </span>
           <ApplicationStageTracker
             stage={application.stage as ApplicationStage}
-            stageBeforeRejection={application.stageBeforeRejection as ApplicationStage | null}
+            stageBeforeRejection={
+              application.stageBeforeRejection as ApplicationStage | null
+            }
           />
         </div>
       </div>

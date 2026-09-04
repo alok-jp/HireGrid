@@ -5,8 +5,8 @@ import { Loader2 } from "lucide-react";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
-import { Button } from "@/components/ui/button";
 import { PermissionInfo } from "@/components/admin/permission-info";
+import { Button } from "@/components/ui/button";
 
 import {
   Form,

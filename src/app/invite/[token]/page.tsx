@@ -54,7 +54,11 @@ export default async function InvitePage({
     );
   }
 
-  const invitation = result.invitation!;
+  if (!result.invitation) {
+    return null;
+  }
+
+  const invitation = result.invitation;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4 md:p-8">

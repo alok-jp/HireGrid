@@ -1,10 +1,10 @@
 import { createCallerFactory, router } from "../init";
+import { applicationRouter } from "./application";
+import { dashboardRouter } from "./dashboard";
+import { interviewRouter } from "./interview";
 import { invitationRouter } from "./invitation";
 import { jobOpeningRouter } from "./jobOpenings";
-import { applicationRouter } from "./application";
 import { userRouter } from "./user";
-import { interviewRouter } from "./interview";
-import { dashboardRouter } from "./dashboard";
 
 export const appRouter = router({
   invitation: invitationRouter,

@@ -71,3 +71,21 @@ below, not necessarily the last one; add a **Later reversed:** line to whichever
 - **Chose:** Append-Only `ApplicationEvent` Table with Transactional Server-Side Writing.
 - **Rejected:** Frontend-driven history submission, mutable history events, or external event streaming.
 - **Why:** HireGrid requires an immutable audit history where nothing can be edited or deleted after the fact. Writing `ApplicationEvent` records inside the same Prisma transaction (`prisma.$transaction`) as state updates guarantees zero history drift, complete server control, and strict compliance with Requirement #9.
+
+## Decision 12
+
+- **Chose:** Server-Side Derived Stalled State from `stageChangedAt` with Scoped Dismissals (`StalledApplicationDismissal`).
+- **Rejected:** Persistent `stalled=true` database flags or scheduled background cron jobs.
+- **Why:** Derived state eliminates database synchronization bugs and worker overhead. Scoping dismissals to `(applicationId, stage, stageStartedAt)` ensures that when a candidate advances to a new stage, `stageChangedAt` resets naturally and the alert can reappear if the candidate later stalls in their new stage.
+
+## Decision 13
+
+- **Chose:** URL Search Parameter Filter Sync (`useSearchParams`) & Active User Definition (`isActive = true`).
+- **Rejected:** In-memory client component state for filters and online presence tracking for active users.
+- **Why:** Synchronizing candidate filter states bi-directionally with browser URL search parameters enables shareable links, bookmarking, and direct stage drill-downs from dashboard metrics. Defining active recruiters/interviewers as enabled database accounts (`isActive = true`) aligns with security audit standards without requiring complex WebSocket presence servers.
+
+## Decision 14
+
+- **Chose:** Explicit `hiredAt` Timestamping on Stage Transition & Outcomes Workspace Organization.
+- **Rejected:** Inferring hire dates from `updatedAt` or rendering hired/rejected candidates in the standard active pipeline.
+- **Why:** Populating `hiredAt` atomically inside `advanceApplicationDomain` ensures exact monthly hiring metrics without timezone or stage update ambiguity. Structuring the candidate workspace into three clear tabs (`Active Candidates`, `Hired Candidates`, `Rejected Candidates`) inside a unified layout shell provides a consistent, decluttered UX while preserving full candidate history.

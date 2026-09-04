@@ -8,10 +8,7 @@ export const auth = betterAuth({
   }),
 
   // Add trustedOrigins here
-  trustedOrigins: [
-    "https://hiregrid-phi.vercel.app",
-    "http://localhost:3000",
-  ],
+  trustedOrigins: ["https://hiregrid-phi.vercel.app", "http://localhost:3000"],
 
   databaseHooks: {
     user: {

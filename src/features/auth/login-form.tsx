@@ -53,7 +53,7 @@ export function LoginForm() {
       },
       {
         onSuccess: (ctx) => {
-          const role = ctx.data?.user?.role; 
+          const role = ctx.data?.user?.role;
           if (role === "MASTER_ADMIN") {
             router.push("/admin");
           } else if (role === "RECRUITER") {
@@ -111,15 +111,7 @@ export function LoginForm() {
                 name="password"
                 render={({ field }) => (
                   <FormItem className="w-full">
-                    <div className="flex items-center justify-between">
-                      <FormLabel>Password</FormLabel>
-                      <Link
-                        href="/forgot-password"
-                        className="text-xs text-muted-foreground hover:text-primary underline-offset-4 hover:underline transition-colors"
-                      >
-                        Forgot password?
-                      </Link>
-                    </div>
+                    <FormLabel>Password</FormLabel>
                     <FormControl>
                       <Input
                         type="password"
@@ -166,5 +158,3 @@ export function LoginForm() {
     </div>
   );
 }
-
-

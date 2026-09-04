@@ -8,17 +8,15 @@ export default async function HomePage() {
     redirect("/login");
   }
 
-  switch (session.user.role) {
-    case "MASTER_ADMIN":
-      redirect("/admin");
+  const role = session.user.role;
 
-    case "RECRUITER":
-      redirect("/recruiter");
-
-    case "INTERVIEWER":
-      redirect("/interviewer");
-
-    default:
-      redirect("/login");
+  if (role === "MASTER_ADMIN") {
+    redirect("/admin");
+  } else if (role === "RECRUITER") {
+    redirect("/recruiter");
+  } else if (role === "INTERVIEWER") {
+    redirect("/interviewer");
+  } else {
+    redirect("/login");
   }
 }

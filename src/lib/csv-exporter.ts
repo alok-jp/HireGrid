@@ -1,6 +1,8 @@
 import { format } from "date-fns";
 
-export function escapeCsvCell(value: string | number | null | undefined): string {
+export function escapeCsvCell(
+  value: string | number | null | undefined,
+): string {
   if (value === null || value === undefined) return '""';
   const str = String(value);
   return `"${str.replace(/"/g, '""')}"`;
@@ -20,7 +22,9 @@ interface ExportableApplication {
   };
 }
 
-export function generateApplicationsCsv(applications: ExportableApplication[]): string {
+export function generateApplicationsCsv(
+  applications: ExportableApplication[],
+): string {
   const headers = [
     "Candidate Name",
     "Email",

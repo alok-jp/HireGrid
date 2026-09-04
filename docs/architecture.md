@@ -12,8 +12,8 @@ Answer each of these, in your own words, once the system has taken real shape.
 ## What are the moving pieces, and how do they talk to each other?
 
 1. **UI Layer (Next.js 16 App Router & React 19)**:
-   - React 19 Client components for authentication, user management, job openings, candidate search/filtering/pagination, candidate detail workspace, interview scheduling, structured interview feedback, append-only application timeline (`ApplicationTimeline`), bulk candidate actions, and recruiter dashboard visualizations built with React Hook Form, Zod, and Recharts.
-   - Unified `AppHeader` component managing identity dropdowns and portal navigation across Admin, Recruiter, and Interviewer views.
+   - React 19 Client components for authentication, user management, job openings, candidate search/filtering/pagination, candidate detail workspace, interview scheduling, structured interview feedback, append-only application timeline (`ApplicationTimeline`), stalled application alerts (`StalledAlertsView`), bulk candidate actions, and recruiter dashboard visualizations built with React Hook Form, Zod, and Recharts.
+   - Unified `AppHeader` component managing identity dropdowns and portal navigation across Admin, Recruiter, and Interviewer views with live stalled alert count badges.
    - Styled with Tailwind CSS, custom design tokens in `globals.css`, Shadcn/ui (Base UI primitives), Framer Motion disclosures, and Sonner toast notifications.
    - Client calls tRPC typed procedures via `@trpc/react-query`.
 2. **API & Route Handlers**:
@@ -21,11 +21,11 @@ Answer each of these, in your own words, once the system has taken real shape.
    - `/api/trpc/[trpc]`: tRPC fetch handler serving type-safe RPC procedures.
 3. **Policy Authorization & Domain Services**:
    - Centralized policy helper functions (`src/lib/policy.ts`) enforcing `canViewApplication`, `canEditApplication`, `canAdvanceApplication`, `canRejectApplication`, `canReinstateApplication`, `canAssignInterviewer`, `canSubmitFeedback`, and `canExportApplications` across procedure handlers.
-   - Centralized domain pipeline functions (`src/lib/pipeline-service.ts`) managing single and bulk stage progressions, atomic conditional SQL concurrency checks (`UPDATE ... WHERE id = X AND stage = CURRENT_STAGE`), rejections, reinstatements, completed interview validation for `INTERVIEW → OFFER`, and transactional `ApplicationEvent` creation.
+   - Centralized domain pipeline functions (`src/lib/pipeline-service.ts`) managing single and bulk stage progressions, atomic conditional SQL concurrency checks (`UPDATE ... WHERE id = X AND stage = CURRENT_STAGE`), rejections, reinstatements, completed interview validation for `INTERVIEW → OFFER`, `stageChangedAt` operational resets, and transactional `ApplicationEvent` creation.
    - Duplicate candidate detector (`src/lib/duplicate-detector.ts`) checking normalized emails across active candidate records.
    - Audit logging engine (`src/lib/logger.ts`) writing structured audit events (`STAGE_ADVANCE`, `STAGE_REJECT`, `INTERVIEW_SCHEDULED`, `INTERVIEW_COMPLETED`, `BULK_ACTION`, `CSV_EXPORT`, `AUTH_EVENT`).
 4. **Data Access & Storage**:
-   - Prisma ORM 7 connecting to Neon serverless PostgreSQL (`user`, `session`, `account`, `invitation`, `job_opening`, `application`, `application_interviewer`, `application_feedback`, `interview`, `interview_interviewer`, `application_event`).
+   - Prisma ORM 7 connecting to Neon serverless PostgreSQL (`user`, `session`, `account`, `invitation`, `job_opening`, `application`, `application_interviewer`, `application_feedback`, `interview`, `interview_interviewer`, `application_event`, `stalled_application_dismissal`).
 
 ---
 
@@ -44,14 +44,15 @@ Answer each of these, in your own words, once the system has taken real shape.
 2. Client calls `trpc.application.advance.useMutation({ id })`.
 3. Server executes `recruiterProcedure` middleware, verifying authentication and checking `canAdvanceApplication(user)`.
 4. Server delegates to `advanceApplicationDomain()` in `src/lib/pipeline-service.ts`.
-5. Inside a single Prisma transaction (`prisma.$transaction`), server verifies stage requirements, executes atomic conditional update `updateMany({ where: { id, stage: oldStage }, data: { stage: nextStage } })`, and creates an immutable `ApplicationEvent` (`type: STAGE_CHANGED`, `actorId: userId`, `oldStage`, `newStage`).
+5. Inside a single Prisma transaction (`prisma.$transaction`), server verifies stage requirements, executes atomic conditional update `updateMany({ where: { id, stage: oldStage }, data: { stage: nextStage, stageChangedAt: now } })`, and creates an immutable `ApplicationEvent` (`type: STAGE_CHANGED`, `actorId: userId`, `oldStage`, `newStage`).
 6. If a concurrent update modified the stage, the transaction throws `TRPCError(CONFLICT)` and rolls back.
-7. Client invalidates `application.getById`, `application.getHistory`, and `dashboard.getStats`, refreshing candidate state and timeline UI.
+7. Client invalidates `application.getById`, `application.getHistory`, `application.getStalledCount`, and `dashboard.getStats`, refreshing candidate state, count badge, and timeline UI.
 
 ---
 
 ## What did you decide *not* to build, and why?
 
+- **Persistent Stalled Flags & Background Cron Jobs**: Decided against adding background cron jobs or persistent `stalled=true` database flags. Stalled status is cleanly derived server-side from `stageChangedAt < 10 days ago` and scoped dismissals (`StalledApplicationDismissal`), ensuring zero background worker overhead and automatic alert reset when candidates advance to a new stage.
 - **Full Event Sourcing / Kafka / External Audit Platforms**: Decided against building a full event-sourcing engine or external message queue. An append-only `ApplicationEvent` database table written inside the same Prisma transaction as state updates provides 100% audit immutability, zero drift, and simple querying without distributed infrastructure complexity.
 - **Streamed CSV Responses**: Decided against using Node.js readable streams, Web Streams API, or chunked transfer encoding for CSV export. Direct in-memory string formatting (`generateApplicationsCsv`) inside the server procedure keeps the implementation simple, fast, and deterministic for standard hiring pipeline datasets without stream pipeline complexity.
 - **Atomic Batch Rollbacks for Bulk Actions**: Decided against wrapping bulk candidate actions in a single atomic transaction or `updateMany()`. Selected candidates may be at different pipeline stages; evaluating candidates independently allows valid candidate advances to succeed while returning explicit per-candidate refusal reasons.

@@ -1,11 +1,15 @@
 import { TRPCError } from "@trpc/server";
-import { z } from "zod";
-import { prisma } from "@/lib/prisma";
-import { recruiterProcedure, protectedProcedure } from "@/trpc/init";
-import { InterviewStatus, ApplicationEventType } from "@/generated/prisma/enums";
-import { canViewApplication } from "@/lib/policy";
 import { format } from "date-fns";
+import { z } from "zod";
+import type { Prisma } from "@/generated/prisma/client";
+import {
+  ApplicationEventType,
+  InterviewStatus,
+} from "@/generated/prisma/enums";
 import { logAuditEvent } from "@/lib/logger";
+import { canViewApplication } from "@/lib/policy";
+import { prisma } from "@/lib/prisma";
+import { protectedProcedure, recruiterProcedure } from "@/trpc/init";
 
 const createInterviewSchema = z.object({
   applicationId: z.string().min(1, "Application ID is required"),
@@ -33,7 +37,9 @@ async function checkDoubleBookingCollision(
   durationMinutes: number,
   excludeInterviewId?: string,
 ) {
-  const proposedEnd = new Date(proposedStart.getTime() + durationMinutes * 60 * 1000);
+  const proposedEnd = new Date(
+    proposedStart.getTime() + durationMinutes * 60 * 1000,
+  );
 
   const existingScheduled = await prisma.interview.findMany({
     where: {
@@ -109,7 +115,7 @@ export const interviewRouter = {
       }
 
       const scheduledDate = new Date(input.scheduledAt);
-      if (isNaN(scheduledDate.getTime())) {
+      if (Number.isNaN(scheduledDate.getTime())) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "Invalid scheduled date and time.",
@@ -216,7 +222,7 @@ export const interviewRouter = {
       }
 
       const scheduledDate = new Date(input.scheduledAt);
-      if (isNaN(scheduledDate.getTime())) {
+      if (Number.isNaN(scheduledDate.getTime())) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "Invalid scheduled date and time.",
@@ -427,7 +433,8 @@ export const interviewRouter = {
       if (!canViewApplication(user, application)) {
         throw new TRPCError({
           code: "FORBIDDEN",
-          message: "You do not have permission to view interviews for this application.",
+          message:
+            "You do not have permission to view interviews for this application.",
         });
       }
 
@@ -456,7 +463,7 @@ export const interviewRouter = {
     const user = ctx.session.user;
     const now = new Date();
 
-    const where: any = {
+    const where: Prisma.InterviewWhereInput = {
       status: InterviewStatus.SCHEDULED,
       scheduledAt: { gte: now },
     };
@@ -504,5 +511,43 @@ export const interviewRouter = {
     });
 
     return upcoming;
+  }),
+
+  // Lightweight stats for the interviewer dashboard header cards
+  myStats: protectedProcedure.query(async ({ ctx }) => {
+    const userId = ctx.session.user.id;
+    const now = new Date();
+
+    const [assignedCount, upcomingCount, feedbackCount] = await Promise.all([
+      // Total applications assigned to this interviewer
+      prisma.applicationInterviewer.count({
+        where: { interviewerId: userId },
+      }),
+
+      // Upcoming interviews (SCHEDULED, in the future) for this interviewer
+      prisma.interview.count({
+        where: {
+          status: InterviewStatus.SCHEDULED,
+          scheduledAt: { gte: now },
+          interviewers: {
+            some: { interviewerId: userId },
+          },
+        },
+      }),
+
+      // Applications assigned to this interviewer where they have NOT yet submitted feedback
+      prisma.applicationInterviewer.count({
+        where: {
+          interviewerId: userId,
+          application: {
+            feedbacks: {
+              none: { interviewerId: userId },
+            },
+          },
+        },
+      }),
+    ]);
+
+    return { assignedCount, upcomingCount, feedbackCount };
   }),
 };

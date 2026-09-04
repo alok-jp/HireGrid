@@ -1,14 +1,14 @@
-import { prisma } from "@/lib/prisma";
-import { recruiterProcedure } from "@/trpc/init";
 import {
-  startOfWeek,
-  endOfWeek,
-  startOfMonth,
   endOfMonth,
-  subWeeks,
+  endOfWeek,
   format,
+  startOfMonth,
+  startOfWeek,
+  subWeeks,
 } from "date-fns";
 import { ApplicationStage, InterviewStatus } from "@/generated/prisma/enums";
+import { prisma } from "@/lib/prisma";
+import { recruiterProcedure } from "@/trpc/init";
 
 const STAGE_LABELS: Record<string, string> = {
   APPLIED: "Applied",
@@ -33,9 +33,13 @@ export const dashboardRouter = {
       activeApplications,
       interviewsThisWeek,
       hiresThisMonth,
+      activeRecruiters,
+      activeInterviewers,
       openingsAgg,
       stageGroup,
       quarterApplications,
+      candidatesInOffer,
+      recentActivity,
     ] = await Promise.all([
       // 1. Open Positions Count
       prisma.jobOpening.count({
@@ -78,7 +82,23 @@ export const dashboardRouter = {
         },
       }),
 
-      // 5. Applications by Job Opening
+      // 5. Active Recruiters Count (role = RECRUITER AND isActive = true)
+      prisma.user.count({
+        where: {
+          role: "RECRUITER",
+          isActive: true,
+        },
+      }),
+
+      // 6. Active Interviewers Count (role = INTERVIEWER AND isActive = true)
+      prisma.user.count({
+        where: {
+          role: "INTERVIEWER",
+          isActive: true,
+        },
+      }),
+
+      // 7. Applications by Job Opening
       prisma.jobOpening.findMany({
         where: { status: "OPEN" },
         select: {
@@ -93,7 +113,7 @@ export const dashboardRouter = {
         take: 10,
       }),
 
-      // 6. Applications by Stage Aggregation
+      // 8. Applications by Stage Aggregation
       prisma.application.groupBy({
         by: ["stage"],
         _count: {
@@ -101,7 +121,7 @@ export const dashboardRouter = {
         },
       }),
 
-      // 7. Applications Received Per Week over previous quarter (createdAt >= quarterStart)
+      // 9. Applications Received Per Week over previous quarter (createdAt >= quarterStart)
       prisma.application.findMany({
         where: {
           createdAt: {
@@ -110,6 +130,44 @@ export const dashboardRouter = {
         },
         select: {
           createdAt: true,
+        },
+      }),
+
+      // 10. Candidates currently in OFFER stage (actionable: need a hire/reject decision)
+      prisma.application.count({
+        where: { stage: ApplicationStage.OFFER },
+      }),
+
+      // 11. Recent Activity — last 10 application events with actor and application context
+      prisma.applicationEvent.findMany({
+        orderBy: { createdAt: "desc" },
+        take: 10,
+        select: {
+          id: true,
+          type: true,
+          oldStage: true,
+          newStage: true,
+          createdAt: true,
+          actor: {
+            select: {
+              id: true,
+              name: true,
+              role: true,
+            },
+          },
+          application: {
+            select: {
+              id: true,
+              candidateName: true,
+              jobOpeningId: true,
+              jobOpening: {
+                select: {
+                  id: true,
+                  title: true,
+                },
+              },
+            },
+          },
         },
       }),
     ]);
@@ -140,7 +198,12 @@ export const dashboardRouter = {
     }));
 
     // Format Applications Received per Week (Rolling 12 Weeks)
-    const weeksList: Array<{ weekStart: Date; weekStr: string; label: string; count: number }> = [];
+    const weeksList: Array<{
+      weekStart: Date;
+      weekStr: string;
+      label: string;
+      count: number;
+    }> = [];
     for (let i = 0; i < 12; i++) {
       const wStart = subWeeks(currentWeekStart, 11 - i);
       const weekStr = format(wStart, "yyyy-MM-dd");
@@ -149,7 +212,9 @@ export const dashboardRouter = {
     }
 
     quarterApplications.forEach((app) => {
-      const appWeekStart = startOfWeek(new Date(app.createdAt), { weekStartsOn: 1 });
+      const appWeekStart = startOfWeek(new Date(app.createdAt), {
+        weekStartsOn: 1,
+      });
       const appWeekStr = format(appWeekStart, "yyyy-MM-dd");
       const weekObj = weeksList.find((w) => w.weekStr === appWeekStr);
       if (weekObj) {
@@ -168,9 +233,13 @@ export const dashboardRouter = {
       activeApplications,
       interviewsThisWeek,
       hiresThisMonth,
+      activeRecruiters,
+      activeInterviewers,
       applicationsByJobOpening,
       applicationsByStage,
       applicationsPerWeek,
+      candidatesInOffer,
+      recentActivity,
     };
   }),
 };

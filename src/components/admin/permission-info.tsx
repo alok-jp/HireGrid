@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { Info } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState } from "react";
 
 export function PermissionInfo({ role }: { role: string }) {
   const [open, setOpen] = useState(false);
@@ -31,7 +31,9 @@ export function PermissionInfo({ role }: { role: string }) {
               {role === "RECRUITER" ? (
                 <>
                   <li>• Create, edit, and archive job positions</li>
-                  <li>• Add candidate applications & advance pipeline stages</li>
+                  <li>
+                    • Add candidate applications & advance pipeline stages
+                  </li>
                   <li>• Assign interviewers to candidate panels</li>
                 </>
               ) : (

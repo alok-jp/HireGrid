@@ -1,17 +1,19 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { trpc } from "@/trpc/client";
+import { format } from "date-fns";
+import { Calendar, Clock, Loader2, UserCheck } from "lucide-react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
   DialogDescription,
   DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -19,9 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calendar, Clock, UserCheck, Loader2 } from "lucide-react";
-import { toast } from "sonner";
-import { format } from "date-fns";
+import { trpc } from "@/trpc/client";
 
 interface ScheduleInterviewDialogProps {
   open: boolean;
@@ -47,9 +47,12 @@ export function ScheduleInterviewDialog({
   const [dateStr, setDateStr] = useState("");
   const [timeStr, setTimeStr] = useState("10:00");
   const [duration, setDuration] = useState<number>(60);
-  const [selectedInterviewerIds, setSelectedInterviewerIds] = useState<string[]>([]);
+  const [selectedInterviewerIds, setSelectedInterviewerIds] = useState<
+    string[]
+  >([]);
 
-  const { data: assignableInterviewers } = trpc.application.getAssignableInterviewers.useQuery();
+  const { data: assignableInterviewers } =
+    trpc.application.getAssignableInterviewers.useQuery();
 
   useEffect(() => {
     if (open) {
@@ -143,7 +146,9 @@ export function ScheduleInterviewDialog({
         <DialogHeader>
           <DialogTitle className="text-base font-bold flex items-center gap-2">
             <Calendar className="w-5 h-5 text-[var(--accent)]" />
-            <span>{isEditing ? "Reschedule Interview" : "Schedule Interview"}</span>
+            <span>
+              {isEditing ? "Reschedule Interview" : "Schedule Interview"}
+            </span>
           </DialogTitle>
           <DialogDescription className="text-xs text-[var(--text-secondary)]">
             {isEditing
@@ -200,11 +205,21 @@ export function ScheduleInterviewDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="30" label="30 Minutes">30 Minutes</SelectItem>
-                <SelectItem value="45" label="45 Minutes">45 Minutes</SelectItem>
-                <SelectItem value="60" label="60 Minutes (1 Hour)">60 Minutes (1 Hour)</SelectItem>
-                <SelectItem value="90" label="90 Minutes (1.5 Hours)">90 Minutes (1.5 Hours)</SelectItem>
-                <SelectItem value="120" label="120 Minutes (2 Hours)">120 Minutes (2 Hours)</SelectItem>
+                <SelectItem value="30" label="30 Minutes">
+                  30 Minutes
+                </SelectItem>
+                <SelectItem value="45" label="45 Minutes">
+                  45 Minutes
+                </SelectItem>
+                <SelectItem value="60" label="60 Minutes (1 Hour)">
+                  60 Minutes (1 Hour)
+                </SelectItem>
+                <SelectItem value="90" label="90 Minutes (1.5 Hours)">
+                  90 Minutes (1.5 Hours)
+                </SelectItem>
+                <SelectItem value="120" label="120 Minutes (2 Hours)">
+                  120 Minutes (2 Hours)
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -241,7 +256,9 @@ export function ScheduleInterviewDialog({
                           {user.email}
                         </span>
                       </div>
-                      {isChecked && <UserCheck className="w-4 h-4 text-[var(--accent)]" />}
+                      {isChecked && (
+                        <UserCheck className="w-4 h-4 text-[var(--accent)]" />
+                      )}
                     </button>
                   );
                 })}
@@ -259,7 +276,12 @@ export function ScheduleInterviewDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" size="sm" className="btn-primary text-xs" disabled={isPending}>
+            <Button
+              type="submit"
+              size="sm"
+              className="btn-primary text-xs"
+              disabled={isPending}
+            >
               {isPending ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
               ) : isEditing ? (

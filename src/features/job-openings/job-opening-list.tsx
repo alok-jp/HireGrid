@@ -1,24 +1,24 @@
 "use client";
 
+import { formatDistanceToNow } from "date-fns";
+import {
+  Archive,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  RotateCcw,
+  Users,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { trpc } from "@/trpc/client";
+import { toast } from "sonner";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Pencil,
-  Archive,
-  RotateCcw,
-  MoreHorizontal,
-  Users,
-  Plus,
-} from "lucide-react";
-import { toast } from "sonner";
-import { formatDistanceToNow } from "date-fns";
+import { trpc } from "@/trpc/client";
 
 interface JobOpeningListProps {
   status?: "OPEN" | "ARCHIVED";
@@ -81,7 +81,10 @@ export function JobOpeningList({ status = "OPEN" }: JobOpeningListProps) {
         </p>
         {status === "OPEN" && (
           <div className="mt-4">
-            <Link href="/recruiter/job-openings/create" className="btn-primary inline-flex items-center gap-1.5 text-xs">
+            <Link
+              href="/recruiter/job-openings/create"
+              className="btn-primary inline-flex items-center gap-1.5 text-xs"
+            >
               <Plus className="w-3.5 h-3.5" />
               Create Position
             </Link>

@@ -1,8 +1,8 @@
-import { Suspense } from "react";
+import { Archive, Plus } from "lucide-react";
 import Link from "next/link";
-import { JobOpeningList } from "@/features/job-openings/job-opening-list";
+import { Suspense } from "react";
 import { JobOpeningSkeleton } from "@/components/ui/skeletons";
-import { Plus, Archive } from "lucide-react";
+import { JobOpeningList } from "@/features/job-openings/job-opening-list";
 
 export default function JobOpeningsPage() {
   return (
@@ -10,7 +10,9 @@ export default function JobOpeningsPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-[var(--border-subtle)] pb-4">
         <div>
-          <h1 className="text-display text-[var(--text-primary)]">Job Openings</h1>
+          <h1 className="text-display text-[var(--text-primary)]">
+            Job Openings
+          </h1>
           <p className="text-meta mt-1">
             Active positions and candidate recruitment requisitions.
           </p>

@@ -1,28 +1,31 @@
 import { TRPCError } from "@trpc/server";
+import { differenceInDays, format, subDays } from "date-fns";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
-import { recruiterProcedure, protectedProcedure } from "@/trpc/init";
-import { getNextStage } from "@/lib/application-stage";
-import { ApplicationStage, Recommendation, ApplicationEventType } from "@/generated/prisma/enums";
 import type { Prisma } from "@/generated/prisma/client";
-import { generateApplicationsCsv } from "@/lib/csv-exporter";
-import { format } from "date-fns";
 import {
-  canViewApplication,
-  canEditApplication,
-  canAdvanceApplication,
-  canRejectApplication,
-  canReinstateApplication,
-  canAssignInterviewer,
-  canExportApplications,
-  canSubmitFeedback,
-} from "@/lib/policy";
+  ApplicationEventType,
+  ApplicationStage,
+  type Recommendation,
+} from "@/generated/prisma/enums";
+import { generateApplicationsCsv } from "@/lib/csv-exporter";
 import { checkDuplicateCandidateEmail } from "@/lib/duplicate-detector";
 import {
   advanceApplicationDomain,
-  rejectApplicationDomain,
   reinstateApplicationDomain,
+  rejectApplicationDomain,
 } from "@/lib/pipeline-service";
+import {
+  canAdvanceApplication,
+  canAssignInterviewer,
+  canEditApplication,
+  canExportApplications,
+  canReinstateApplication,
+  canRejectApplication,
+  canSubmitFeedback,
+  canViewApplication,
+} from "@/lib/policy";
+import { prisma } from "@/lib/prisma";
+import { protectedProcedure, recruiterProcedure } from "@/trpc/init";
 
 const createApplicationSchema = z.object({
   jobOpeningId: z.string().min(1, "Job opening ID is required"),
@@ -72,16 +75,14 @@ const bulkActionSchema = z.object({
 
 const submitFeedbackSchema = z.object({
   applicationId: z.string().min(1, "Application ID is required"),
-  recommendation: z.enum([
-    "STRONG_HIRE",
-    "HIRE",
-    "NO_HIRE",
-    "STRONG_NO_HIRE",
-  ]),
+  recommendation: z.enum(["STRONG_HIRE", "HIRE", "NO_HIRE", "STRONG_NO_HIRE"]),
   technicalRating: z.number().int().min(1).max(5).default(3),
   communicationRating: z.number().int().min(1).max(5).default(3),
   problemSolvingRating: z.number().int().min(1).max(5).default(3),
-  comments: z.string().min(3, "Please provide evaluation feedback comments").max(2000),
+  comments: z
+    .string()
+    .min(3, "Please provide evaluation feedback comments")
+    .max(2000),
 });
 
 export const applicationRouter = {
@@ -93,7 +94,10 @@ export const applicationRouter = {
       }),
     )
     .query(async ({ input }) => {
-      return await checkDuplicateCandidateEmail(input.email, input.excludeApplicationId);
+      return await checkDuplicateCandidateEmail(
+        input.email,
+        input.excludeApplicationId,
+      );
     }),
 
   create: recruiterProcedure
@@ -117,6 +121,9 @@ export const applicationRouter = {
         });
       }
 
+      const now = new Date();
+
+      // TRANSACTIONAL CREATION: Create Application + CREATED ApplicationEvent
       const application = await prisma.$transaction(async (tx) => {
         const app = await tx.application.create({
           data: {
@@ -126,6 +133,7 @@ export const applicationRouter = {
             source: input.source,
             notes: input.notes ?? "",
             stage: ApplicationStage.APPLIED,
+            stageChangedAt: now,
           },
         });
 
@@ -187,7 +195,11 @@ export const applicationRouter = {
           message: "You do not have permission to advance applications.",
         });
       }
-      return await advanceApplicationDomain(input.id, ctx.session.user.id, ctx.session.user.role ?? undefined);
+      return await advanceApplicationDomain(
+        input.id,
+        ctx.session.user.id,
+        ctx.session.user.role ?? undefined,
+      );
     }),
 
   reject: recruiterProcedure
@@ -199,7 +211,11 @@ export const applicationRouter = {
           message: "You do not have permission to reject applications.",
         });
       }
-      return await rejectApplicationDomain(input.id, ctx.session.user.id, ctx.session.user.role ?? undefined);
+      return await rejectApplicationDomain(
+        input.id,
+        ctx.session.user.id,
+        ctx.session.user.role ?? undefined,
+      );
     }),
 
   reinstate: recruiterProcedure
@@ -211,7 +227,11 @@ export const applicationRouter = {
           message: "You do not have permission to reinstate applications.",
         });
       }
-      return await reinstateApplicationDomain(input.id, ctx.session.user.id, ctx.session.user.role ?? undefined);
+      return await reinstateApplicationDomain(
+        input.id,
+        ctx.session.user.id,
+        ctx.session.user.role ?? undefined,
+      );
     }),
 
   bulkAdvance: recruiterProcedure
@@ -239,19 +259,26 @@ export const applicationRouter = {
 
       for (const id of input.applicationIds) {
         try {
-          const updated = await advanceApplicationDomain(id, ctx.session.user.id, ctx.session.user.role ?? undefined);
+          const updated = await advanceApplicationDomain(
+            id,
+            ctx.session.user.id,
+            ctx.session.user.role ?? undefined,
+          );
           succeeded.push({
             applicationId: id,
             candidateName: updated.candidateName,
             oldStage: updated.stage,
             newStage: updated.stage,
           });
-        } catch (err: any) {
-          const application = await prisma.application.findUnique({ where: { id } });
+        } catch (err: unknown) {
+          const application = await prisma.application.findUnique({
+            where: { id },
+          });
           refused.push({
             applicationId: id,
             candidateName: application?.candidateName || "Unknown Candidate",
-            reason: err.message || "Cannot advance candidate",
+            reason:
+              err instanceof Error ? err.message : "Cannot advance candidate",
           });
         }
       }
@@ -284,19 +311,26 @@ export const applicationRouter = {
 
       for (const id of input.applicationIds) {
         try {
-          const updated = await rejectApplicationDomain(id, ctx.session.user.id, ctx.session.user.role ?? undefined);
+          const updated = await rejectApplicationDomain(
+            id,
+            ctx.session.user.id,
+            ctx.session.user.role ?? undefined,
+          );
           succeeded.push({
             applicationId: id,
             candidateName: updated.candidateName,
             oldStage: updated.stageBeforeRejection || "PREVIOUS",
             newStage: ApplicationStage.REJECTED,
           });
-        } catch (err: any) {
-          const application = await prisma.application.findUnique({ where: { id } });
+        } catch (err: unknown) {
+          const application = await prisma.application.findUnique({
+            where: { id },
+          });
           refused.push({
             applicationId: id,
             candidateName: application?.candidateName || "Unknown Candidate",
-            reason: err.message || "Cannot reject candidate",
+            reason:
+              err instanceof Error ? err.message : "Cannot reject candidate",
           });
         }
       }
@@ -326,7 +360,8 @@ export const applicationRouter = {
       if (!canSubmitFeedback(user, application)) {
         throw new TRPCError({
           code: "FORBIDDEN",
-          message: "You must be assigned to this application panel to submit feedback.",
+          message:
+            "You must be assigned to this application panel to submit feedback.",
         });
       }
 
@@ -397,7 +432,8 @@ export const applicationRouter = {
       if (!canViewApplication(user, application)) {
         throw new TRPCError({
           code: "FORBIDDEN",
-          message: "You do not have permission to view feedback for this application.",
+          message:
+            "You do not have permission to view feedback for this application.",
         });
       }
 
@@ -419,7 +455,11 @@ export const applicationRouter = {
     }),
 
   getHistory: protectedProcedure
-    .input(z.object({ applicationId: z.string().min(1, "Application ID is required") }))
+    .input(
+      z.object({
+        applicationId: z.string().min(1, "Application ID is required"),
+      }),
+    )
     .query(async ({ input, ctx }) => {
       const user = ctx.session.user;
 
@@ -438,7 +478,8 @@ export const applicationRouter = {
       if (!canViewApplication(user, application)) {
         throw new TRPCError({
           code: "FORBIDDEN",
-          message: "You do not have permission to view application history timeline.",
+          message:
+            "You do not have permission to view application history timeline.",
         });
       }
 
@@ -466,6 +507,171 @@ export const applicationRouter = {
       });
 
       return events;
+    }),
+
+  getStalledAlerts: recruiterProcedure.query(async ({ ctx }) => {
+    if (!canAdvanceApplication(ctx.session.user)) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "You do not have permission to view stalled alerts.",
+      });
+    }
+
+    const tenDaysAgo = subDays(new Date(), 10);
+    const eligibleStages: ApplicationStage[] = [
+      ApplicationStage.APPLIED,
+      ApplicationStage.SCREENING,
+      ApplicationStage.INTERVIEW,
+      ApplicationStage.OFFER,
+    ];
+
+    // Query candidates in eligible active stages whose stageChangedAt is > 10 days ago
+    const candidates = await prisma.application.findMany({
+      where: {
+        stage: { in: eligibleStages },
+        stageChangedAt: { lt: tenDaysAgo },
+      },
+      include: {
+        jobOpening: {
+          select: {
+            id: true,
+            title: true,
+            department: true,
+          },
+        },
+        dismissals: true,
+      },
+      orderBy: { stageChangedAt: "asc" },
+    });
+
+    const now = new Date();
+
+    // Filter out candidates with a matching dismissal for the current stage & stageChangedAt
+    const visibleAlerts = candidates
+      .filter((app) => {
+        const hasDismissal = app.dismissals.some(
+          (d) =>
+            d.stage === app.stage &&
+            d.stageStartedAt.getTime() === app.stageChangedAt.getTime(),
+        );
+        return !hasDismissal;
+      })
+      .map((app) => ({
+        applicationId: app.id,
+        candidateName: app.candidateName,
+        email: app.email,
+        jobOpeningId: app.jobOpening.id,
+        jobTitle: app.jobOpening.title,
+        department: app.jobOpening.department,
+        currentStage: app.stage,
+        stageChangedAt: app.stageChangedAt,
+        daysInStage: differenceInDays(now, app.stageChangedAt),
+      }));
+
+    return visibleAlerts;
+  }),
+
+  getStalledCount: recruiterProcedure.query(async ({ ctx }) => {
+    if (!canAdvanceApplication(ctx.session.user)) {
+      return { count: 0 };
+    }
+
+    const tenDaysAgo = subDays(new Date(), 10);
+    const eligibleStages: ApplicationStage[] = [
+      ApplicationStage.APPLIED,
+      ApplicationStage.SCREENING,
+      ApplicationStage.INTERVIEW,
+      ApplicationStage.OFFER,
+    ];
+
+    const candidates = await prisma.application.findMany({
+      where: {
+        stage: { in: eligibleStages },
+        stageChangedAt: { lt: tenDaysAgo },
+      },
+      include: {
+        dismissals: true,
+      },
+    });
+
+    const count = candidates.filter((app) => {
+      const hasDismissal = app.dismissals.some(
+        (d) =>
+          d.stage === app.stage &&
+          d.stageStartedAt.getTime() === app.stageChangedAt.getTime(),
+      );
+      return !hasDismissal;
+    }).length;
+
+    return { count };
+  }),
+
+  dismissStalledAlert: recruiterProcedure
+    .input(
+      z.object({
+        applicationId: z.string().min(1, "Application ID is required"),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      if (!canAdvanceApplication(ctx.session.user)) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You do not have permission to dismiss stalled alerts.",
+        });
+      }
+
+      const application = await prisma.application.findUnique({
+        where: { id: input.applicationId },
+      });
+
+      if (!application) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Application not found",
+        });
+      }
+
+      const eligibleStages: ApplicationStage[] = [
+        ApplicationStage.APPLIED,
+        ApplicationStage.SCREENING,
+        ApplicationStage.INTERVIEW,
+        ApplicationStage.OFFER,
+      ];
+
+      if (!eligibleStages.includes(application.stage as ApplicationStage)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "Only applications in active pipeline stages can be dismissed.",
+        });
+      }
+
+      const tenDaysAgo = subDays(new Date(), 10);
+      if (application.stageChangedAt >= tenDaysAgo) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "This application is not currently stalled.",
+        });
+      }
+
+      const dismissal = await prisma.stalledApplicationDismissal.upsert({
+        where: {
+          applicationId_stage_stageStartedAt: {
+            applicationId: application.id,
+            stage: application.stage,
+            stageStartedAt: application.stageChangedAt,
+          },
+        },
+        create: {
+          applicationId: application.id,
+          stage: application.stage,
+          stageStartedAt: application.stageChangedAt,
+          dismissedById: ctx.session.user.id,
+        },
+        update: {},
+      });
+
+      return dismissal;
     }),
 
   exportCsv: protectedProcedure.query(async ({ ctx }) => {
@@ -574,7 +780,8 @@ export const applicationRouter = {
       if (targetUser.role !== "INTERVIEWER") {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "Only users with the INTERVIEWER role can be assigned to an application panel.",
+          message:
+            "Only users with the INTERVIEWER role can be assigned to an application panel.",
         });
       }
 
@@ -645,7 +852,8 @@ export const applicationRouter = {
       if (!canViewApplication(user, application)) {
         throw new TRPCError({
           code: "FORBIDDEN",
-          message: "You do not have permission to view panel members for this application.",
+          message:
+            "You do not have permission to view panel members for this application.",
         });
       }
 
@@ -757,7 +965,8 @@ export const applicationRouter = {
       if (!canViewApplication(user, application)) {
         throw new TRPCError({
           code: "FORBIDDEN",
-          message: "You do not have permission to view this candidate application.",
+          message:
+            "You do not have permission to view this candidate application.",
         });
       }
 
@@ -792,8 +1001,21 @@ export const applicationRouter = {
         where.jobOpeningId = input.jobOpeningId;
       }
 
+      // Stage filtering behavior:
+      // If input.stage is explicitly provided, filter by that stage (e.g. REJECTED, HIRED, INTERVIEW, etc.)
+      // If input.stage is NOT provided (default Active Candidates view), show ONLY active pipeline stages:
+      // APPLIED, SCREENING, INTERVIEW, OFFER — NOT HIRED or REJECTED (those are terminal outcomes)
       if (input.stage) {
         where.stage = input.stage as ApplicationStage;
+      } else {
+        where.stage = {
+          in: [
+            ApplicationStage.APPLIED,
+            ApplicationStage.SCREENING,
+            ApplicationStage.INTERVIEW,
+            ApplicationStage.OFFER,
+          ],
+        };
       }
 
       if (input.source) {

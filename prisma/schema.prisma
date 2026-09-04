@@ -63,6 +63,7 @@ model User {
   emailVerified Boolean      @default(false)
   image         String?
   role          Role         @default(INTERVIEWER)
+  isActive      Boolean      @default(true)
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 
@@ -73,8 +74,10 @@ model User {
   feedbacks             ApplicationFeedback[]
   scheduledInterviews   InterviewInterviewer[]
   events                ApplicationEvent[]
+  dismissedAlerts       StalledApplicationDismissal[]
 
   @@index([email])
+  @@index([role, isActive])
   @@map("user")
 }
 
@@ -167,6 +170,7 @@ model Application {
   notes                String?
   stage                ApplicationStage @default(APPLIED)
   stageBeforeRejection ApplicationStage?
+  stageChangedAt       DateTime         @default(now())
   hiredAt              DateTime?
   createdAt            DateTime         @default(now())
   updatedAt            DateTime         @updatedAt
@@ -177,10 +181,13 @@ model Application {
   feedbacks            ApplicationFeedback[]
   interviews           Interview[]
   events               ApplicationEvent[]
+  dismissals           StalledApplicationDismissal[]
 
   @@index([jobOpeningId])
   @@index([email])
   @@index([stage])
+  @@index([stageChangedAt])
+  @@index([stage, stageChangedAt])
   @@index([hiredAt])
   @@index([createdAt])
   @@index([updatedAt])
@@ -274,4 +281,20 @@ model ApplicationEvent {
   @@index([applicationId, createdAt])
   @@index([actorId])
   @@map("application_event")
+}
+
+model StalledApplicationDismissal {
+  id             String           @id @default(cuid())
+  applicationId  String
+  stage          ApplicationStage
+  stageStartedAt DateTime
+  dismissedById  String
+  dismissedAt    DateTime         @default(now())
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  dismissedBy User        @relation(fields: [dismissedById], references: [id], onDelete: Cascade)
+
+  @@unique([applicationId, stage, stageStartedAt])
+  @@index([applicationId])
+  @@map("stalled_application_dismissal")
 }

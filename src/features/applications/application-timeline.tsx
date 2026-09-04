@@ -1,38 +1,69 @@
 "use client";
 
-import { trpc } from "@/trpc/client";
-import { formatDistanceToNow, format } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import {
-  History,
-  XCircle,
-  RotateCcw,
-  MessageSquareQuote,
+  ArrowRight,
   Calendar,
   Clock,
+  History,
+  MessageSquareQuote,
+  RotateCcw,
   User,
-  ArrowRight,
+  XCircle,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { trpc } from "@/trpc/client";
 
 interface ApplicationTimelineProps {
   applicationId: string;
 }
 
-export function ApplicationTimeline({ applicationId }: ApplicationTimelineProps) {
-  const { data: rawEvents, isLoading, error } = trpc.application.getHistory.useQuery(
+interface TimelineHistoryEvent {
+  id: string;
+  applicationId: string;
+  type: string;
+  actorId: string;
+  oldStage?: string | null;
+  newStage?: string | null;
+  interviewId?: string | null;
+  metadata?: Record<string, unknown> | null;
+  createdAt: string | Date;
+  actor?: {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+  } | null;
+  interview?: {
+    id: string;
+    scheduledAt: string | Date;
+    duration?: number | null;
+    status: string;
+  } | null;
+}
+
+export function ApplicationTimeline({
+  applicationId,
+}: ApplicationTimelineProps) {
+  const {
+    data: rawEvents,
+    isLoading,
+    error,
+  } = trpc.application.getHistory.useQuery(
     { applicationId },
     { refetchOnWindowFocus: false },
   );
 
-  const events = (rawEvents as any[]) || [];
+  const events = (rawEvents as unknown as TimelineHistoryEvent[]) ?? [];
 
   if (isLoading) {
     return (
       <Card className="border-slate-200 shadow-sm dark:border-slate-800">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base font-semibold">
-            <History className="h-4 w-4 text-sky-600" /> Application History & Timeline
+            <History className="h-4 w-4 text-sky-600" /> Application History &
+            Timeline
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -49,7 +80,8 @@ export function ApplicationTimeline({ applicationId }: ApplicationTimelineProps)
       <Card className="border-slate-200 shadow-sm dark:border-slate-800">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base font-semibold">
-            <History className="h-4 w-4 text-sky-600" /> Application History & Timeline
+            <History className="h-4 w-4 text-sky-600" /> Application History &
+            Timeline
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -66,7 +98,8 @@ export function ApplicationTimeline({ applicationId }: ApplicationTimelineProps)
       <Card className="border-slate-200 shadow-sm dark:border-slate-800">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base font-semibold">
-            <History className="h-4 w-4 text-sky-600" /> Application History & Timeline
+            <History className="h-4 w-4 text-sky-600" /> Application History &
+            Timeline
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -83,9 +116,13 @@ export function ApplicationTimeline({ applicationId }: ApplicationTimelineProps)
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-base font-semibold text-slate-900 dark:text-slate-100">
-            <History className="h-4 w-4 text-sky-600 dark:text-sky-400" /> Immutable Application Timeline
+            <History className="h-4 w-4 text-sky-600 dark:text-sky-400" />{" "}
+            Immutable Application Timeline
           </CardTitle>
-          <Badge variant="outline" className="text-xs font-normal text-slate-500">
+          <Badge
+            variant="outline"
+            className="text-xs font-normal text-slate-500"
+          >
             {events.length} events logged
           </Badge>
         </div>
@@ -95,10 +132,15 @@ export function ApplicationTimeline({ applicationId }: ApplicationTimelineProps)
           {events.map((event) => {
             const eventDate = new Date(event.createdAt);
             const formattedTime = format(eventDate, "MMM d, yyyy 'at' h:mm a");
-            const relativeTime = formatDistanceToNow(eventDate, { addSuffix: true });
+            const relativeTime = formatDistanceToNow(eventDate, {
+              addSuffix: true,
+            });
+            // biome-ignore lint/suspicious/noExplicitAny: metadata is a flexible JSON blob from the DB
             const metadata = (event.metadata as Record<string, any>) || {};
             const actorName = event.actor?.name || "User";
-            const actorRole = event.actor?.role ? event.actor.role.replace("_", " ") : "USER";
+            const actorRole = event.actor?.role
+              ? event.actor.role.replace("_", " ")
+              : "USER";
 
             return (
               <div key={event.id} className="relative group">
@@ -132,40 +174,63 @@ export function ApplicationTimeline({ applicationId }: ApplicationTimelineProps)
                         {event.type === "CREATED" && "Application Created"}
                         {event.type === "STAGE_CHANGED" && "Stage Advanced"}
                         {event.type === "REJECTED" && "Application Rejected"}
-                        {event.type === "REINSTATED" && "Application Reinstated"}
-                        {event.type === "FEEDBACK_ADDED" && "Interviewer Feedback Submitted"}
-                        {event.type === "INTERVIEW_SCHEDULED" && "Interview Scheduled"}
-                        {event.type === "INTERVIEW_RESCHEDULED" && "Interview Rescheduled"}
-                        {event.type === "INTERVIEW_CANCELLED" && "Interview Cancelled"}
+                        {event.type === "REINSTATED" &&
+                          "Application Reinstated"}
+                        {event.type === "FEEDBACK_ADDED" &&
+                          "Interviewer Feedback Submitted"}
+                        {event.type === "INTERVIEW_SCHEDULED" &&
+                          "Interview Scheduled"}
+                        {event.type === "INTERVIEW_RESCHEDULED" &&
+                          "Interview Rescheduled"}
+                        {event.type === "INTERVIEW_CANCELLED" &&
+                          "Interview Cancelled"}
                       </span>
                       <span className="text-xs text-slate-500">
-                        by <span className="font-medium text-slate-700 dark:text-slate-300">{actorName}</span> ({actorRole})
+                        by{" "}
+                        <span className="font-medium text-slate-700 dark:text-slate-300">
+                          {actorName}
+                        </span>{" "}
+                        ({actorRole})
                       </span>
                     </div>
-                    <span className="text-xs text-slate-400" title={formattedTime}>
+                    <span
+                      className="text-xs text-slate-400"
+                      title={formattedTime}
+                    >
                       {relativeTime}
                     </span>
                   </div>
 
-                  {event.type === "STAGE_CHANGED" && event.oldStage && event.newStage && (
-                    <div className="mt-2 flex items-center gap-2 text-xs">
-                      <Badge variant="secondary" className="font-mono text-[11px]">
-                        {event.oldStage}
-                      </Badge>
-                      <ArrowRight className="h-3 w-3 text-slate-400" />
-                      <Badge className="font-mono text-[11px] bg-sky-600 hover:bg-sky-700">
-                        {event.newStage}
-                      </Badge>
-                    </div>
-                  )}
+                  {event.type === "STAGE_CHANGED" &&
+                    event.oldStage &&
+                    event.newStage && (
+                      <div className="mt-2 flex items-center gap-2 text-xs">
+                        <Badge
+                          variant="secondary"
+                          className="font-mono text-[11px]"
+                        >
+                          {event.oldStage}
+                        </Badge>
+                        <ArrowRight className="h-3 w-3 text-slate-400" />
+                        <Badge className="font-mono text-[11px] bg-sky-600 hover:bg-sky-700">
+                          {event.newStage}
+                        </Badge>
+                      </div>
+                    )}
 
                   {event.type === "REJECTED" && event.oldStage && (
                     <div className="mt-2 flex items-center gap-2 text-xs">
-                      <Badge variant="secondary" className="font-mono text-[11px]">
+                      <Badge
+                        variant="secondary"
+                        className="font-mono text-[11px]"
+                      >
                         {event.oldStage}
                       </Badge>
                       <ArrowRight className="h-3 w-3 text-slate-400" />
-                      <Badge variant="destructive" className="font-mono text-[11px]">
+                      <Badge
+                        variant="destructive"
+                        className="font-mono text-[11px]"
+                      >
                         REJECTED
                       </Badge>
                     </div>
@@ -173,7 +238,10 @@ export function ApplicationTimeline({ applicationId }: ApplicationTimelineProps)
 
                   {event.type === "REINSTATED" && event.newStage && (
                     <div className="mt-2 flex items-center gap-2 text-xs">
-                      <Badge variant="destructive" className="font-mono text-[11px]">
+                      <Badge
+                        variant="destructive"
+                        className="font-mono text-[11px]"
+                      >
                         REJECTED
                       </Badge>
                       <ArrowRight className="h-3 w-3 text-slate-400" />
@@ -183,41 +251,50 @@ export function ApplicationTimeline({ applicationId }: ApplicationTimelineProps)
                     </div>
                   )}
 
-                  {event.type === "FEEDBACK_ADDED" && metadata.recommendation && (
-                    <div className="mt-2.5 rounded border border-slate-200 bg-white p-2.5 dark:border-slate-800 dark:bg-slate-950">
-                      <div className="flex items-center justify-between gap-2">
-                        <Badge
-                          variant="outline"
-                          className={
-                            metadata.recommendation.includes("HIRE") && !metadata.recommendation.includes("NO")
-                              ? "border-emerald-500 text-emerald-700 dark:text-emerald-400"
-                              : "border-rose-500 text-rose-700 dark:text-rose-400"
-                          }
-                        >
-                          {String(metadata.recommendation).replace("_", " ")}
-                        </Badge>
-                        <div className="flex items-center gap-3 text-xs text-slate-500">
-                          <span>Tech: {metadata.technicalRating}/5</span>
-                          <span>Comm: {metadata.communicationRating}/5</span>
-                          <span>Problem: {metadata.problemSolvingRating}/5</span>
+                  {event.type === "FEEDBACK_ADDED" &&
+                    metadata.recommendation && (
+                      <div className="mt-2.5 rounded border border-slate-200 bg-white p-2.5 dark:border-slate-800 dark:bg-slate-950">
+                        <div className="flex items-center justify-between gap-2">
+                          <Badge
+                            variant="outline"
+                            className={
+                              metadata.recommendation.includes("HIRE") &&
+                              !metadata.recommendation.includes("NO")
+                                ? "border-emerald-500 text-emerald-700 dark:text-emerald-400"
+                                : "border-rose-500 text-rose-700 dark:text-rose-400"
+                            }
+                          >
+                            {String(metadata.recommendation).replace("_", " ")}
+                          </Badge>
+                          <div className="flex items-center gap-3 text-xs text-slate-500">
+                            <span>Tech: {metadata.technicalRating}/5</span>
+                            <span>Comm: {metadata.communicationRating}/5</span>
+                            <span>
+                              Problem: {metadata.problemSolvingRating}/5
+                            </span>
+                          </div>
                         </div>
+                        {metadata.comments && (
+                          <p className="mt-2 text-xs italic text-slate-600 dark:text-slate-400 line-clamp-2">
+                            &ldquo;{metadata.comments}&rdquo;
+                          </p>
+                        )}
                       </div>
-                      {metadata.comments && (
-                        <p className="mt-2 text-xs italic text-slate-600 dark:text-slate-400 line-clamp-2">
-                          &ldquo;{metadata.comments}&rdquo;
-                        </p>
-                      )}
-                    </div>
-                  )}
+                    )}
 
-                  {event.type === "INTERVIEW_SCHEDULED" && metadata.scheduledAt && (
-                    <div className="mt-2 flex items-center gap-3 text-xs text-slate-600 dark:text-slate-400">
-                      <span className="flex items-center gap-1">
-                        <Clock className="h-3 w-3 text-slate-400" />
-                        {format(new Date(metadata.scheduledAt), "MMM d, h:mm a")} ({metadata.duration} mins)
-                      </span>
-                    </div>
-                  )}
+                  {event.type === "INTERVIEW_SCHEDULED" &&
+                    metadata.scheduledAt && (
+                      <div className="mt-2 flex items-center gap-3 text-xs text-slate-600 dark:text-slate-400">
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-3 w-3 text-slate-400" />
+                          {format(
+                            new Date(metadata.scheduledAt),
+                            "MMM d, h:mm a",
+                          )}{" "}
+                          ({metadata.duration} mins)
+                        </span>
+                      </div>
+                    )}
                 </div>
               </div>
             );

@@ -1,9 +1,16 @@
 "use client";
 
+import { formatDistanceToNow } from "date-fns";
+import {
+  Award,
+  Loader2,
+  MessageSquarePlus,
+  Star,
+  UserCheck,
+} from "lucide-react";
 import { useState } from "react";
-import { trpc } from "@/trpc/client";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -11,39 +18,38 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  MessageSquarePlus,
-  Star,
-  Award,
-  Loader2,
-  CheckCircle2,
-  UserCheck,
-} from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
-import { toast } from "sonner";
-import { Recommendation } from "@/generated/prisma/enums";
+import { Textarea } from "@/components/ui/textarea";
+import type { Recommendation } from "@/generated/prisma/enums";
+import { trpc } from "@/trpc/client";
 
 interface InterviewFeedbackProps {
   applicationId: string;
   isAssignedInterviewer?: boolean;
 }
 
-const RECOMMENDATION_LABELS: Record<Recommendation, { label: string; colorClass: string }> = {
+const RECOMMENDATION_LABELS: Record<
+  Recommendation,
+  { label: string; colorClass: string }
+> = {
   STRONG_HIRE: {
     label: "Strong Hire",
-    colorClass: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
+    colorClass:
+      "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
   },
   HIRE: {
     label: "Hire",
-    colorClass: "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/30",
+    colorClass:
+      "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/30",
   },
   NO_HIRE: {
     label: "No Hire",
-    colorClass: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30",
+    colorClass:
+      "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30",
   },
   STRONG_NO_HIRE: {
     label: "Strong No Hire",
-    colorClass: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30",
+    colorClass:
+      "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30",
   },
 };
 
@@ -93,7 +99,10 @@ export function InterviewFeedback({
     });
   };
 
-  const renderStarRating = (value: number, onChange?: (val: number) => void) => {
+  const renderStarRating = (
+    value: number,
+    onChange?: (val: number) => void,
+  ) => {
     return (
       <div className="flex items-center gap-1">
         {[1, 2, 3, 4, 5].map((star) => (
@@ -144,7 +153,10 @@ export function InterviewFeedback({
 
       {/* Structured Feedback Submission Form */}
       {isSubmittingForm && (
-        <form onSubmit={handleSubmit} className="space-y-4 p-3 rounded-md bg-[var(--surface-0)] border border-[var(--border-subtle)]">
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-4 p-3 rounded-md bg-[var(--surface-0)] border border-[var(--border-subtle)]"
+        >
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Overall Recommendation */}
             <div className="space-y-1">
@@ -153,7 +165,9 @@ export function InterviewFeedback({
               </span>
               <Select
                 value={recommendation}
-                onValueChange={(val) => setRecommendation((val as Recommendation) ?? "HIRE")}
+                onValueChange={(val) =>
+                  setRecommendation((val as Recommendation) ?? "HIRE")
+                }
               >
                 <SelectTrigger className="w-full text-xs">
                   <SelectValue />
@@ -178,16 +192,25 @@ export function InterviewFeedback({
             {/* Ratings Grid */}
             <div className="space-y-2 text-xs">
               <div className="flex items-center justify-between">
-                <span className="font-medium text-[var(--text-secondary)]">Technical Competency</span>
+                <span className="font-medium text-[var(--text-secondary)]">
+                  Technical Competency
+                </span>
                 {renderStarRating(technicalRating, setTechnicalRating)}
               </div>
               <div className="flex items-center justify-between">
-                <span className="font-medium text-[var(--text-secondary)]">Communication</span>
+                <span className="font-medium text-[var(--text-secondary)]">
+                  Communication
+                </span>
                 {renderStarRating(communicationRating, setCommunicationRating)}
               </div>
               <div className="flex items-center justify-between">
-                <span className="font-medium text-[var(--text-secondary)]">Problem Solving</span>
-                {renderStarRating(problemSolvingRating, setProblemSolvingRating)}
+                <span className="font-medium text-[var(--text-secondary)]">
+                  Problem Solving
+                </span>
+                {renderStarRating(
+                  problemSolvingRating,
+                  setProblemSolvingRating,
+                )}
               </div>
             </div>
           </div>
@@ -247,11 +270,15 @@ export function InterviewFeedback({
       ) : (
         <div className="space-y-3">
           {feedbacks.map((fb) => {
-            const recConfig = RECOMMENDATION_LABELS[fb.recommendation as Recommendation] || {
+            const recConfig = RECOMMENDATION_LABELS[
+              fb.recommendation as Recommendation
+            ] || {
               label: fb.recommendation,
               colorClass: "bg-[var(--surface-2)] text-[var(--text-secondary)]",
             };
-            const timeAgo = formatDistanceToNow(new Date(fb.createdAt), { addSuffix: true });
+            const timeAgo = formatDistanceToNow(new Date(fb.createdAt), {
+              addSuffix: true,
+            });
 
             return (
               <div
@@ -276,15 +303,21 @@ export function InterviewFeedback({
 
                 <div className="grid grid-cols-3 gap-2 py-1 bg-[var(--surface-1)] px-2.5 rounded-sm text-[11px]">
                   <div>
-                    <span className="text-[var(--text-tertiary)] block">Technical:</span>
+                    <span className="text-[var(--text-tertiary)] block">
+                      Technical:
+                    </span>
                     {renderStarRating(fb.technicalRating)}
                   </div>
                   <div>
-                    <span className="text-[var(--text-tertiary)] block">Communication:</span>
+                    <span className="text-[var(--text-tertiary)] block">
+                      Communication:
+                    </span>
                     {renderStarRating(fb.communicationRating)}
                   </div>
                   <div>
-                    <span className="text-[var(--text-tertiary)] block">Problem Solving:</span>
+                    <span className="text-[var(--text-tertiary)] block">
+                      Problem Solving:
+                    </span>
                     {renderStarRating(fb.problemSolvingRating)}
                   </div>
                 </div>

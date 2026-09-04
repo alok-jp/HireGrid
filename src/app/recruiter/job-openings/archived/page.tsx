@@ -1,8 +1,8 @@
-import { Suspense } from "react";
-import Link from "next/link";
-import { JobOpeningList } from "@/features/job-openings/job-opening-list";
-import { JobOpeningSkeleton } from "@/components/ui/skeletons";
 import { ArrowLeft } from "lucide-react";
+import Link from "next/link";
+import { Suspense } from "react";
+import { JobOpeningSkeleton } from "@/components/ui/skeletons";
+import { JobOpeningList } from "@/features/job-openings/job-opening-list";
 
 export default function ArchivedJobOpeningsPage() {
   return (

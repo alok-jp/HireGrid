@@ -1,23 +1,23 @@
 "use client";
 
-import { useState } from "react";
-import { trpc } from "@/trpc/client";
-import { Button } from "@/components/ui/button";
-import { ScheduleInterviewDialog } from "@/features/interviews/schedule-interview-dialog";
+import { format } from "date-fns";
 import {
   Calendar,
-  Clock,
-  UserCheck,
-  CheckCircle2,
-  XCircle,
-  Plus,
-  Loader2,
   CalendarDays,
+  CheckCircle2,
+  Clock,
+  Loader2,
+  Plus,
   RotateCcw,
+  UserCheck,
+  XCircle,
 } from "lucide-react";
-import { format } from "date-fns";
+import { useState } from "react";
 import { toast } from "sonner";
-import { InterviewStatus } from "@/generated/prisma/enums";
+import { Button } from "@/components/ui/button";
+import { ScheduleInterviewDialog } from "@/features/interviews/schedule-interview-dialog";
+import type { InterviewStatus } from "@/generated/prisma/enums";
+import { trpc } from "@/trpc/client";
 
 interface InterviewSectionProps {
   applicationId: string;
@@ -26,21 +26,28 @@ interface InterviewSectionProps {
 
 const STATUS_CONFIG: Record<
   InterviewStatus,
-  { label: string; colorClass: string; icon: React.ComponentType<{ className?: string }> }
+  {
+    label: string;
+    colorClass: string;
+    icon: React.ComponentType<{ className?: string }>;
+  }
 > = {
   SCHEDULED: {
     label: "Scheduled",
-    colorClass: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30",
+    colorClass:
+      "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30",
     icon: CalendarDays,
   },
   COMPLETED: {
     label: "Completed",
-    colorClass: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
+    colorClass:
+      "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
     icon: CheckCircle2,
   },
   CANCELLED: {
     label: "Cancelled",
-    colorClass: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30",
+    colorClass:
+      "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30",
     icon: XCircle,
   },
 };
@@ -52,11 +59,17 @@ export function InterviewSection({
   const utils = trpc.useUtils();
 
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingInterview, setEditingInterview] = useState<any>(null);
+  const [editingInterview, setEditingInterview] = useState<{
+    id: string;
+    scheduledAt: string | Date;
+    duration?: number | null;
+    interviewers: { interviewer: { id: string; name: string } }[];
+  } | null>(null);
 
-  const { data: interviews, isLoading } = trpc.interview.listForApplication.useQuery({
-    applicationId,
-  });
+  const { data: interviews, isLoading } =
+    trpc.interview.listForApplication.useQuery({
+      applicationId,
+    });
 
   const cancelMutation = trpc.interview.cancel.useMutation({
     onSuccess: () => {
@@ -85,7 +98,12 @@ export function InterviewSection({
     setDialogOpen(true);
   };
 
-  const handleOpenReschedule = (interview: any) => {
+  const handleOpenReschedule = (interview: {
+    id: string;
+    scheduledAt: string | Date;
+    duration?: number | null;
+    interviewers: { interviewer: { id: string; name: string } }[];
+  }) => {
     setEditingInterview(interview);
     setDialogOpen(true);
   };
@@ -167,7 +185,9 @@ export function InterviewSection({
                 {/* Panel Members List */}
                 <div className="flex items-center gap-2 bg-[var(--surface-1)] p-2 rounded-sm text-[11px]">
                   <UserCheck className="w-3.5 h-3.5 text-[var(--accent)] shrink-0" />
-                  <span className="text-[var(--text-tertiary)] font-bold">Panel:</span>
+                  <span className="text-[var(--text-tertiary)] font-bold">
+                    Panel:
+                  </span>
                   <div className="flex flex-wrap gap-1.5">
                     {item.interviewers.map((i) => (
                       <span

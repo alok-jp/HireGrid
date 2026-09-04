@@ -1,21 +1,32 @@
 "use client";
 
-import Link from "next/link";
-import { trpc } from "@/trpc/client";
-import { ApplicationStageTracker } from "@/features/applications/application-stage";
-import { ApplicationStage } from "@/generated/prisma/enums";
-import { Building2, UserCheck, Calendar, Briefcase, ArrowRight, MessageSquareCode } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import {
+  ArrowRight,
+  Briefcase,
+  Building2,
+  Calendar,
+  MessageSquareCode,
+  UserCheck,
+} from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { ApplicationStageTracker } from "@/features/applications/application-stage";
+import type { ApplicationStage } from "@/generated/prisma/enums";
+import { trpc } from "@/trpc/client";
 
 export function InterviewerApplicationList() {
-  const { data: applications, isLoading } = trpc.application.myAssigned.useQuery();
+  const { data: applications, isLoading } =
+    trpc.application.myAssigned.useQuery();
 
   if (isLoading) {
     return (
       <div className="space-y-3">
         {[1, 2, 3].map((item) => (
-          <div key={item} className="p-4 rounded-md border bg-[var(--surface-1)] space-y-3">
+          <div
+            key={item}
+            className="p-4 rounded-md border bg-[var(--surface-1)] space-y-3"
+          >
             <div className="skeleton w-36 h-4" />
             <div className="skeleton w-full h-8" />
           </div>
@@ -32,7 +43,8 @@ export function InterviewerApplicationList() {
           No assigned candidate applications yet
         </p>
         <p className="text-meta mt-1 max-w-sm mx-auto">
-          When a recruiter assigns you to an interview panel for candidate evaluation, the applications will appear here.
+          When a recruiter assigns you to an interview panel for candidate
+          evaluation, the applications will appear here.
         </p>
       </div>
     );
@@ -90,7 +102,11 @@ export function InterviewerApplicationList() {
 
                 <div className="flex items-center gap-2">
                   <Link href={`/interviewer/applications/${app.id}`}>
-                    <Button size="sm" variant="outline" className="text-xs gap-1.5 h-8">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-xs gap-1.5 h-8"
+                    >
                       <MessageSquareCode className="w-3.5 h-3.5 text-[var(--accent)]" />
                       <span>Evaluate & Submit Feedback</span>
                       <ArrowRight className="w-3 h-3 ml-1" />
@@ -105,14 +121,18 @@ export function InterviewerApplicationList() {
                   <span className="font-bold text-[var(--text-tertiary)] uppercase tracking-wider block mb-1 text-[10px]">
                     Candidate Notes
                   </span>
-                  <p className="whitespace-pre-line leading-relaxed">{app.notes}</p>
+                  <p className="whitespace-pre-line leading-relaxed">
+                    {app.notes}
+                  </p>
                 </div>
               ) : null}
 
               {/* Pipeline Stage Tracker */}
               <ApplicationStageTracker
                 stage={app.stage as ApplicationStage}
-                stageBeforeRejection={app.stageBeforeRejection as ApplicationStage | null}
+                stageBeforeRejection={
+                  app.stageBeforeRejection as ApplicationStage | null
+                }
               />
             </div>
           );

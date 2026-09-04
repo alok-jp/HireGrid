@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
-import { getCurrentSession } from "@/lib/get-session";
 import { AppHeader } from "@/components/layout/app-header";
+import { getCurrentSession } from "@/lib/get-session";
 
 export default async function AdminLayout({
   children,
@@ -20,7 +20,7 @@ export default async function AdminLayout({
   return (
     <div className="min-h-screen bg-background flex flex-col page-enter">
       <AppHeader
-        role="admin"
+        navRole="admin"
         user={{
           name: session.user.name ?? "",
           email: session.user.email,

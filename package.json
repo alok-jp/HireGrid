@@ -6,11 +6,8 @@
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start",
-    "test": "tsx src/__tests__/pipeline-policy.test.ts && tsx src/__tests__/interview-dashboard.test.ts",
-    "test:load": "k6 run tests/load/test.js",
     "lint": "biome check",
-    "format": "biome format --write",
-    "db:seed": "tsx prisma/seed.ts"
+    "format": "biome format --write"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
@@ -28,7 +25,6 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
-    "crypto": "^1.0.1",
     "date-fns": "^4.4.0",
     "dotenv": "^17.4.2",
     "embla-carousel-react": "^8.6.0",

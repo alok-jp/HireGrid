@@ -19,7 +19,7 @@ export interface AuditLogOptions {
   userRole?: string | null;
   entityId?: string;
   entityType?: "APPLICATION" | "INTERVIEW" | "JOB_OPENING" | "USER";
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   status?: "SUCCESS" | "FAILURE";
   errorMessage?: string;
 }

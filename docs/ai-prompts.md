@@ -106,3 +106,29 @@ How do I implement an append-only application event system and timeline where ev
 
 ### What you got
 Received an architectural pattern to create an `ApplicationEvent` model and `ApplicationEventType` enum in Prisma (`CREATED`, `STAGE_CHANGED`, `REJECTED`, `REINSTATED`, `FEEDBACK_ADDED`, `INTERVIEW_SCHEDULED`, `INTERVIEW_RESCHEDULED`, `INTERVIEW_CANCELLED`). Event creation is executed inside `prisma.$transaction` along with `Application` stage updates in `src/lib/pipeline-service.ts` and tRPC procedures. The backend router exposes `application.getHistory` with strict authorization checks (`canViewApplication`) and deliberately omits any `update` or `delete` procedures. On the frontend, `ApplicationTimeline` queries the history endpoint and renders a vertical activity timeline with event type icons, stage diff badges, actor details, relative timestamps, and evaluation previews.
+
+---
+
+## Implementing Stalled Application Alerts & Threshold Detection
+
+### Prompt
+How should I implement the stalled application alert system where any application that has remained in the same stage for more than 10 days triggers a navigational badge alert, can be dismissed by recruiters for that specific stage period, and reappears if the candidate advances and stalls again in the new stage?
+
+### What you got
+Implemented `StalledApplicationDismissal` model tracking `[applicationId, stage, stageStartedAt]` with a unique constraint. Built `application.getStalledAlerts` calculating `NOW() - stageChangedAt > 10 days` while filtering out dismissed periods and rejected/hired stages. Added header badge counter and dedicated `/recruiter/alerts` view with one-click dismissal.
+
+---
+
+## Automated Linting, Type Strictness & Security Loopholes
+
+### Prompt
+Scan the codebase for any remaining type errors, missing guards, and security loopholes like token leaks in server logs or insecure protocol assumptions.
+
+### What you got
+Fixed invitation router to use `APP_URL` rather than `NEXT_PUBLIC_APP_URL`, removed raw invitation token console logging, resolved Biome linting rules (`noExplicitAny`, `useExhaustiveDependencies`, `noNonNullAssertion`), and verified strict TypeScript compilation.
+
+---
+
+## Methodology & Tooling Note
+
+I have used official documentation for the implementation of the libraries and used VS Code auto complete feature to accelerate the repetitive tasks.

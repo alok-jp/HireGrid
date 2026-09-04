@@ -21,7 +21,10 @@ export const jobOpeningRouter = {
     .input(
       z
         .object({
-          status: z.enum(["OPEN", "ARCHIVED", "ALL"]).optional().default("OPEN"),
+          status: z
+            .enum(["OPEN", "ARCHIVED", "ALL"])
+            .optional()
+            .default("OPEN"),
         })
         .optional(),
     )
